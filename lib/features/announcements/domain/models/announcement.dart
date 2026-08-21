@@ -1,0 +1,19 @@
+import 'package:freezed_annotation/freezed_annotation.dart';
+
+part 'announcement.freezed.dart';
+part 'announcement.g.dart';
+
+@freezed
+class Announcement with _$Announcement {
+  const factory Announcement({
+    required String id,
+    required String orgId,
+    String? domainId, // null = global
+    required String title,
+    required String body,
+    required String postedBy,
+    required DateTime createdAt,
+  }) = _Announcement;
+
+  factory Announcement.fromJson(Map<String, dynamic> json) => _$AnnouncementFromJson(json);
+}

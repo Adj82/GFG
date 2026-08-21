@@ -1,0 +1,80 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function getRoleData(orgId, roleName) {
+      return get(/databases/$(database)/documents/roles/$(orgId + "_" + roleName)).data;
+    }
+
+    function hasPermission(permission) {
+      let userData = getUserData();
+      let roleData = getRoleData(userData.orgId, userData.roleName);
+      return roleData.permissions[permission] == true;
+    }
+
+    // Organizations
+    match /organizations/{orgId} {
+      allow read: if isSignedIn();
+      allow write: if false; // Only via Admin SDK/System
+    }
+
+    // Domains
+    match /domains/{domainId} {
+      allow read: if isSignedIn() && getUserData().orgId == resource.data.orgId;
+      allow write: if isSignedIn() && hasPermission('canManageRoles');
+    }
+
+    // Users
+    match /users/{userId} {
+      allow read: if isSignedIn() && getUserData().orgId == resource.data.orgId;
+      allow write: if isSignedIn() && (
+        request.auth.uid == userId ||
+        hasPermission('canApproveMembers') ||
+        hasPermission('canCreateLeads')
+      );
+    }
+
+    // Roles (Permissions Matrix)
+    match /roles/{roleId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && hasPermission('canManageRoles');
+    }
+
+    // Tasks
+    match /tasks/{taskId} {
+      allow read: if isSignedIn() && getUserData().orgId == resource.data.orgId;
+      allow create: if isSignedIn() && (
+        hasPermission('canAssignTasksGlobal') ||
+        (hasPermission('canAssignTasksDomain') && getUserData().domainId == request.resource.data.domainId)
+      );
+      allow update, delete: if isSignedIn() && (
+        hasPermission('canAssignTasksGlobal') ||
+        (hasPermission('canAssignTasksDomain') && getUserData().domainId == resource.data.domainId) ||
+        request.auth.uid == resource.data.assigneeId
+      );
+    }
+
+    // Announcements
+    match /announcements/{announcementId} {
+      allow read: if isSignedIn() && getUserData().orgId == resource.data.orgId;
+      allow create: if isSignedIn() && (
+        hasPermission('canPostAnnouncementsGlobal') ||
+        (hasPermission('canPostAnnouncementsDomain') && getUserData().domainId == request.resource.data.domainId)
+      );
+      allow update, delete: if isSignedIn() && (
+        hasPermission('canPostAnnouncementsGlobal') ||
+        (hasPermission('canPostAnnouncementsDomain') && getUserData().domainId == resource.data.domainId)
+      );
+    }
+  }
+}

@@ -1,0 +1,98 @@
+import 'models/role.dart';
+
+class PermissionsMatrix {
+  static const Map<String, Permissions> defaults = {
+    'President': Permissions(
+      canAssignTasksGlobal: true,
+      canAssignTasksDomain: true,
+      canPostAnnouncementsGlobal: true,
+      canPostAnnouncementsDomain: true,
+      canApproveMembers: true,
+      canManageRoles: true,
+      canCreateLeads: true,
+      canViewFinance: true,
+      canManageFinance: true,
+    ),
+    'Vice President': Permissions(
+      canAssignTasksGlobal: true,
+      canAssignTasksDomain: true,
+      canPostAnnouncementsGlobal: true,
+      canPostAnnouncementsDomain: true,
+      canApproveMembers: true,
+      canManageRoles: false,
+      canCreateLeads: true,
+      canViewFinance: true,
+      canManageFinance: true,
+    ),
+    'Tech Head': Permissions(
+      canAssignTasksGlobal: false,
+      canAssignTasksDomain: true,
+      canPostAnnouncementsGlobal: false,
+      canPostAnnouncementsDomain: true,
+      canApproveMembers: true,
+      canManageRoles: false,
+      canCreateLeads: false,
+      canViewFinance: true,
+      canManageFinance: false,
+    ),
+    'Event Head': Permissions(
+      canAssignTasksGlobal: false,
+      canAssignTasksDomain: true,
+      canPostAnnouncementsGlobal: false,
+      canPostAnnouncementsDomain: true,
+      canApproveMembers: true,
+      canManageRoles: false,
+      canCreateLeads: false,
+      canViewFinance: true,
+      canManageFinance: false,
+    ),
+    'Marketing Head': Permissions(
+      canAssignTasksGlobal: false,
+      canAssignTasksDomain: true,
+      canPostAnnouncementsGlobal: false,
+      canPostAnnouncementsDomain: true,
+      canApproveMembers: true,
+      canManageRoles: false,
+      canCreateLeads: false,
+      canViewFinance: true,
+      canManageFinance: false,
+    ),
+    'Sponsorship Head': Permissions(
+      canAssignTasksGlobal: false,
+      canAssignTasksDomain: true,
+      canPostAnnouncementsGlobal: false,
+      canPostAnnouncementsDomain: true,
+      canApproveMembers: true,
+      canManageRoles: false,
+      canCreateLeads: false,
+      canViewFinance: true,
+      canManageFinance: false,
+    ),
+    'Domain Lead': Permissions(
+      canAssignTasksGlobal: false,
+      canAssignTasksDomain: true,
+      canPostAnnouncementsGlobal: false,
+      canPostAnnouncementsDomain: true,
+      canApproveMembers: true,
+      canManageRoles: false,
+      canCreateLeads: false,
+      canViewFinance: false,
+      canManageFinance: false,
+    ),
+    'Member': Permissions(
+      canAssignTasksGlobal: false,
+      canAssignTasksDomain: false,
+      canPostAnnouncementsGlobal: false,
+      canPostAnnouncementsDomain: false,
+      canApproveMembers: false,
+      canManageRoles: false,
+      canCreateLeads: false,
+      canViewFinance: false,
+      canManageFinance: false,
+    ),
+  };
+
+  static Permissions getForRole(String roleName) {
+    return defaults[roleName] ?? defaults['Member']!;
+  }
+}
