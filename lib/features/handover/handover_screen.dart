@@ -49,7 +49,6 @@ class _HandoverScreenState extends ConsumerState<HandoverScreen> {
   List<Office> _offices(List<Domain> domains) => [
     const Office(roleId: DefaultRoles.president, holderId: null),
     const Office(roleId: DefaultRoles.vicePresident, holderId: null),
-    const Office(roleId: DefaultRoles.treasurer, holderId: null),
     const Office(
       roleId: DefaultRoles.technicalHead,
       dept: Department.technical,

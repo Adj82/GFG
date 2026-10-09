@@ -106,7 +106,7 @@ class FinanceActions extends ActionsBase {
         [e.submittedBy],
         kind: NoticeKind.finance,
         title: 'Expense approved: ${Fmt.money(e.amount)}',
-        body: '${e.title} is approved. The treasurer will reimburse you.',
+        body: '${e.title} is approved. You will be reimbursed.',
         route: '/funds/expense/${e.id}',
       );
       await notify(

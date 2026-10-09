@@ -26,7 +26,7 @@ flutter run -d chrome        # or any device
 flutter test                 # 37 tests: rules, flows, snake, and a walk of every screen
 ```
 
-Demo accounts (password `gfg@1234`): President `2105101`, Treasurer `2205077`,
+Demo accounts (password `gfg@1234`): President `2105101`,
 Technical Head `2205140`, App Dev Lead `2205211`, Member `2305318`, Applicant `2405522`
 (all `@kiit.ac.in`). Settings → *Reset demo data* restores the sample state.
 Set `kDemoMode = false` in `lib/app/app.dart` for a real release.

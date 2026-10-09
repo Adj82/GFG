@@ -44,7 +44,7 @@ Future<void> _as(ProviderContainer c, String roll) async {
 
 void main() {
   test(
-    'expense: member submits, lead then head then president approve, treasurer reimburses',
+    'expense: member submits, lead then head then president approve, president reimburses',
     () async {
       final c = await _boot();
       await _as(c, '2305318'); // member
@@ -86,7 +86,7 @@ void main() {
             'history: ${e.history.map((h) => '${h.stage.name}:${h.decision.name}').join(', ')}',
       );
 
-      await _as(c, '2205077'); // treasurer
+      await _as(c, '2105101'); // president
       await c
           .read(financeActionsProvider)
           .markReimbursed(e, paymentRef: 'UPI-123');
@@ -140,8 +140,8 @@ void main() {
     await _as(c, '2105101');
     final members = c.read(membersProvider);
     final outgoing = members.firstWhere(
-      (m) => m.rollNo == '2205077',
-    ); // treasurer
+      (m) => m.rollNo == '2205162',
+    ); // event head
     final newPres = members.firstWhere((m) => m.rollNo == '2305318');
     await c
         .read(termActionsProvider)

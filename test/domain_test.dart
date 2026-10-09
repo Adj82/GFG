@@ -222,7 +222,7 @@ void main() {
       final a = Access(me: m, role: d.roles[m.roleId]!, domains: d.domains);
       expect(a.can(Permission.manageMembers), isFalse);
       expect(a.can(Permission.viewWallet), isFalse);
-      expect(a.canManageMember(d.byRoll['2205077']!), isFalse);
+      expect(a.canManageMember(d.byRoll['2205162']!), isFalse);
     });
   });
 

@@ -91,7 +91,7 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
     Toast.show(
       context,
       next == ExpenseStage.approved
-          ? 'Approved. The treasurer will pay it back.'
+          ? 'Approved. The core team will pay it back.'
           : 'Approved and passed to ${next.label.toLowerCase()}',
     );
   }

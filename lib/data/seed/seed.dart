@@ -18,7 +18,6 @@ abstract final class Seed {
   /// Accounts shown on the sign-in screen in demo mode.
   static const demoAccounts = [
     (label: 'President', email: '2105101@kiit.ac.in'),
-    (label: 'Treasurer', email: '2205077@kiit.ac.in'),
     (label: 'Technical Head', email: '2205140@kiit.ac.in'),
     (label: 'App Dev Lead', email: '2205211@kiit.ac.in'),
     (label: 'Member', email: '2305318@kiit.ac.in'),
@@ -218,14 +217,6 @@ abstract final class Seed {
         year: 4,
         joinedDaysAgo: 1050,
         skills: ['Operations', 'React'],
-      ),
-      m(
-        '2205077',
-        'Rohan Agarwal',
-        DefaultRoles.treasurer,
-        joinedDaysAgo: 700,
-        branch: 'IT',
-        skills: ['Finance', 'Excel', 'Python'],
       ),
       m(
         '2205140',
@@ -1220,7 +1211,7 @@ abstract final class Seed {
         body:
             'Submit receipts within 7 days of spending. Approved expenses are paid out every Friday.',
         audience: Audience.society,
-        authorId: u('2205077'),
+        authorId: president,
         createdAt: today.subtract(const Duration(days: 9, hours: -12)),
         readBy: pick(22),
       ),
@@ -1238,7 +1229,7 @@ abstract final class Seed {
     ];
 
     // ── Finance ─────────────────────────────────────────────────────────────
-    final treasurer = u('2205077');
+    final payer = president;
     final vp = u('2105188');
     ApprovalStep s(
       ExpenseStage st,
@@ -1273,7 +1264,7 @@ abstract final class Seed {
           s(
             ExpenseStage.approved,
             ApprovalDecision.reimbursed,
-            treasurer,
+            payer,
             day(-54, 15),
             'UPI 4182 7736 0021',
           ),
@@ -1299,7 +1290,7 @@ abstract final class Seed {
           s(
             ExpenseStage.approved,
             ApprovalDecision.reimbursed,
-            treasurer,
+            payer,
             day(-57, 16),
             'Cash',
           ),
@@ -1344,7 +1335,7 @@ abstract final class Seed {
           s(
             ExpenseStage.approved,
             ApprovalDecision.reimbursed,
-            treasurer,
+            payer,
             day(-8, 17),
             'UPI 5519 0042 8810',
           ),
@@ -1471,7 +1462,7 @@ abstract final class Seed {
         title: 'GeeksforGeeks chapter grant',
         amount: 40000,
         source: IncomeSource.grant,
-        loggedBy: treasurer,
+        loggedBy: payer,
         receivedAt: day(-80, 12),
         reference: 'NEFT GFG/CH/0921',
       ),
@@ -1480,7 +1471,7 @@ abstract final class Seed {
         title: 'Induction fee collection',
         amount: 9600,
         source: IncomeSource.membershipFee,
-        loggedBy: treasurer,
+        loggedBy: payer,
         receivedAt: day(-45, 17),
         note: '96 members × ₹100',
       ),
@@ -1490,7 +1481,7 @@ abstract final class Seed {
         amount: 50000,
         source: IncomeSource.sponsorship,
         eventId: 'ev_coderush',
-        loggedBy: treasurer,
+        loggedBy: payer,
         receivedAt: day(-6, 15),
         reference: 'INV-BF-2207',
       ),
@@ -1500,7 +1491,7 @@ abstract final class Seed {
         amount: 3800,
         source: IncomeSource.ticketSales,
         eventId: 'ev_orientation',
-        loggedBy: treasurer,
+        loggedBy: payer,
         receivedAt: day(-57, 20),
       ),
     ];
@@ -1715,7 +1706,7 @@ abstract final class Seed {
         id: id('cmt'),
         parent: CommentParent.expense,
         parentId: expenses[8].id,
-        authorId: u('2205077'),
+        authorId: president,
         text: 'We have ₹50k from ByteForge for this. Fine to approve.',
         createdAt: day(-1, 12),
       ),
@@ -1822,7 +1813,7 @@ abstract final class Seed {
         route: '/events/ev_oss',
       ),
       n(
-        treasurer,
+        payer,
         NoticeKind.finance,
         'To reimburse: ₹1,350',
         'Harsh Vardhan · Bootcamp certificates',
@@ -1850,10 +1841,10 @@ abstract final class Seed {
       ),
       AuditEntry(
         id: id('aud'),
-        actorId: treasurer,
+        actorId: payer,
         action: 'income.logged',
         summary:
-            'Rohan Agarwal logged ₹40,000 from GeeksforGeeks chapter grant',
+            'Aarav Mohanty logged ₹40,000 from GeeksforGeeks chapter grant',
         at: day(-80, 12),
         term: termLabel,
       ),
@@ -1868,10 +1859,10 @@ abstract final class Seed {
       ),
       AuditEntry(
         id: id('aud'),
-        actorId: treasurer,
+        actorId: payer,
         action: 'income.logged',
         summary:
-            'Rohan Agarwal logged ₹50,000 from ByteForge Labs — CodeRush partner',
+            'Aarav Mohanty logged ₹50,000 from ByteForge Labs — CodeRush partner',
         at: day(-6, 15),
         term: termLabel,
       ),
@@ -1926,8 +1917,7 @@ abstract final class Seed {
         DefaultRoles.technicalHead ||
         DefaultRoles.eventHead ||
         DefaultRoles.sponsorshipHead ||
-        DefaultRoles.marketingHead ||
-        DefaultRoles.treasurer => 11,
+        DefaultRoles.marketingHead => 11,
         _ => 5,
       };
       for (var i = 0; i < weight; i++) {

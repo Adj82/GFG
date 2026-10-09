@@ -353,7 +353,7 @@ class _Trail extends ConsumerWidget {
         const _TrailItem(
           title: 'Waiting for reimbursement',
           state: _State.current,
-          subtitle: 'The treasurer pays approved claims every Friday.',
+          subtitle: 'Approved claims are paid every Friday.',
         ),
       );
     }

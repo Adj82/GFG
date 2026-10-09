@@ -5,7 +5,6 @@ import '../data/models/role.dart';
 abstract final class DefaultRoles {
   static const president = 'president';
   static const vicePresident = 'vice_president';
-  static const treasurer = 'treasurer';
   static const technicalHead = 'technical_head';
   static const eventHead = 'event_head';
   static const sponsorshipHead = 'sponsorship_head';
@@ -32,24 +31,6 @@ abstract final class DefaultRoles {
       isOfficeBearer: true,
       permissions: Permission.values.toSet()
         ..removeAll({Permission.manageTerm, Permission.manageRoles}),
-    ),
-    const Role(
-      id: treasurer,
-      name: 'Treasurer',
-      rank: 2,
-      scope: RoleScope.society,
-      tier: RoleTier.leadership,
-      isOfficeBearer: true,
-      permissions: {
-        Permission.submitExpense,
-        Permission.viewWallet,
-        Permission.viewScopedFinance,
-        Permission.logIncome,
-        Permission.reimburse,
-        Permission.viewAnalytics,
-        Permission.viewAudit,
-        Permission.manageVault,
-      },
     ),
     ..._coreHeads,
     const Role(
