@@ -1,80 +1,168 @@
 rules_version = '2';
 
+// SocietyOS security rules.
+//
+// Mirrors lib/domain/access.dart and lib/domain/expense_rules.dart. The client
+// UI only *reflects* these rules; they are the real enforcement. Anything that
+// must be atomic or tamper-proof (expense transitions, attendance, audit,
+// notifications, account creation) is written by Cloud Functions with the Admin
+// SDK, so clients get read access at most.
+//
+// The old rules let a signed-in user write their own `role`. That hole is
+// closed here: members can only edit a whitelist of profile fields.
+
 service cloud.firestore {
   match /databases/{database}/documents {
+    match /orgs/{orgId} {
 
-    // Helper functions
-    function isSignedIn() {
-      return request.auth != null;
-    }
+      // ── Helpers ───────────────────────────────────────────────────────────
+      function me() {
+        return get(/databases/$(database)/documents/orgs/$(orgId)/members/$(request.auth.uid)).data;
+      }
+      function signedIn() { return request.auth != null; }
+      function isMember() {
+        return signedIn() &&
+          exists(/databases/$(database)/documents/orgs/$(orgId)/members/$(request.auth.uid));
+      }
+      function isActive() { return isMember() && me().status == 'active'; }
+      function role() {
+        return get(/databases/$(database)/documents/orgs/$(orgId)/roles/$(me().roleId)).data;
+      }
+      function can(permission) { return isActive() && permission in role().permissions; }
+      function societyWide() { return isActive() && role().scope == 'society'; }
+      function domainDept(domainId) {
+        return get(/databases/$(database)/documents/orgs/$(orgId)/domains/$(domainId)).data.department;
+      }
+      // Does the signed-in person's scope reach this domain?
+      function reaches(domainId) {
+        return societyWide() ||
+          (role().scope == 'department' && domainId != null && domainDept(domainId) == me().department) ||
+          (role().scope == 'domain' && domainId != null && domainId == me().domainId);
+      }
+      function canIn(permission, domainId) { return can(permission) && reaches(domainId); }
 
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-    }
+      // ── Organisation, roles, domains (anything not matched below is denied) ──
 
-    function getRoleData(orgId, roleName) {
-      return get(/databases/$(database)/documents/roles/$(orgId + "_" + roleName)).data;
-    }
+      match /meta/{id} {
+        allow read: if signedIn();            // org name, term, recruitment flag
+        allow write: if false;                // Cloud Functions only (term rollover, recruitment toggle)
+      }
+      match /domains/{id} { allow read: if signedIn(); allow write: if false; }
+      match /roles/{id} {
+        allow read: if signedIn();
+        allow write: if can('manageRoles');
+      }
 
-    function hasPermission(permission) {
-      let userData = getUserData();
-      let roleData = getRoleData(userData.orgId, userData.roleName);
-      return roleData.permissions[permission] == true;
-    }
+      // ── Members ──────────────────────────────────────────────────────────
+      match /members/{uid} {
+        allow read: if isActive() || request.auth.uid == uid;
+        // Self sign-up creates a *pending* applicant only. Never a role.
+        allow create: if request.auth.uid == uid &&
+          request.resource.data.status == 'pending' &&
+          request.resource.data.roleId == 'member';
+        // Members edit only their own profile fields, never role/status/domain.
+        allow update: if request.auth.uid == uid &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['name', 'phone', 'year', 'branch', 'bio', 'skills', 'github', 'linkedin', 'needsPasswordReset']);
+        // Role changes, enable/disable, accept/decline: Cloud Functions
+        // (changeRole, setDisabled, acceptApplication) that check Access.canManageMember.
+        allow delete: if false;               // history is never deleted
+      }
 
-    // Organizations
-    match /organizations/{orgId} {
-      allow read: if isSignedIn();
-      allow write: if false; // Only via Admin SDK/System
-    }
+      match /applications/{id} {
+        allow read: if request.auth.uid == resource.data.memberId ||
+          canIn('approveMembers', resource.data.domainId);
+        allow create: if request.auth.uid == request.resource.data.memberId &&
+          request.resource.data.stage == 'applied';
+        allow update: if canIn('approveMembers', resource.data.domainId) &&
+          !(request.resource.data.diff(resource.data).affectedKeys().hasAny(['memberId', 'domainId']));
+      }
 
-    // Domains
-    match /domains/{domainId} {
-      allow read: if isSignedIn() && getUserData().orgId == resource.data.orgId;
-      allow write: if isSignedIn() && hasPermission('canManageRoles');
-    }
+      // ── Tasks ────────────────────────────────────────────────────────────
+      match /tasks/{id} {
+        allow read: if isActive() && (resource.data.domainId == null
+          ? true : (reaches(resource.data.domainId) || resource.data.domainId == me().domainId
+                    || request.auth.uid in resource.data.assigneeIds));
+        allow create: if canIn('assignTasks', request.resource.data.domainId) &&
+          request.resource.data.createdBy == request.auth.uid;
+        allow update: if (canIn('assignTasks', resource.data.domainId)) ||
+          // Assignees may only move status, tick checklist items and comment-adjacent fields.
+          (request.auth.uid in resource.data.assigneeIds &&
+            request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['status', 'checklist', 'updatedAt', 'completedAt']));
+        allow delete: if canIn('assignTasks', resource.data.domainId);
+      }
 
-    // Users
-    match /users/{userId} {
-      allow read: if isSignedIn() && getUserData().orgId == resource.data.orgId;
-      allow write: if isSignedIn() && (
-        request.auth.uid == userId ||
-        hasPermission('canApproveMembers') ||
-        hasPermission('canCreateLeads')
-      );
-    }
+      // ── Events and attendance ────────────────────────────────────────────
+      match /events/{id} {
+        allow read: if isActive();
+        allow create: if canIn('manageEvents', request.resource.data.domainId);
+        allow update: if canIn('manageEvents', resource.data.domainId) ||
+          request.auth.uid in resource.data.organizerIds ||
+          // Anyone active may RSVP: only the rsvp list may change.
+          (isActive() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rsvpIds']));
+        // checkInSecret must never be readable by attendees: store it in
+        // events/{id}/private/secret and deny reads there (see BACKEND.md).
+      }
+      match /attendance/{id} {
+        allow read: if isActive();
+        allow write: if false;                // callable `checkIn` verifies the rotating code
+      }
 
-    // Roles (Permissions Matrix)
-    match /roles/{roleId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn() && hasPermission('canManageRoles');
-    }
+      // ── Announcements, meetings, vault ───────────────────────────────────
+      match /announcements/{id} {
+        allow read: if isActive();            // audience filtering happens in the query + UI; tighten per audience if needed
+        allow create: if can('postAnnouncements') &&
+          request.resource.data.authorId == request.auth.uid;
+        allow update: if (can('postAnnouncements') && resource.data.authorId == request.auth.uid) ||
+          societyWide() ||
+          // Anyone may add themselves to readBy.
+          (isActive() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readBy']));
+        allow delete: if can('postAnnouncements') && (resource.data.authorId == request.auth.uid || societyWide());
+      }
+      match /meetings/{id} {
+        allow read: if isActive();
+        allow write: if can('scheduleMeetings');
+      }
+      match /vault/{id} {
+        allow read: if isActive();
+        allow write: if can('manageVault');
+      }
+      match /comments/{id} {
+        allow read: if isActive();
+        allow create: if isActive() && request.resource.data.authorId == request.auth.uid;
+        allow delete: if isActive() && resource.data.authorId == request.auth.uid;
+      }
 
-    // Tasks
-    match /tasks/{taskId} {
-      allow read: if isSignedIn() && getUserData().orgId == resource.data.orgId;
-      allow create: if isSignedIn() && (
-        hasPermission('canAssignTasksGlobal') ||
-        (hasPermission('canAssignTasksDomain') && getUserData().domainId == request.resource.data.domainId)
-      );
-      allow update, delete: if isSignedIn() && (
-        hasPermission('canAssignTasksGlobal') ||
-        (hasPermission('canAssignTasksDomain') && getUserData().domainId == resource.data.domainId) ||
-        request.auth.uid == resource.data.assigneeId
-      );
-    }
+      // ── Money ────────────────────────────────────────────────────────────
+      match /expenses/{id} {
+        allow read: if isActive() && (
+          resource.data.submittedBy == request.auth.uid ||
+          can('viewWallet') ||
+          (can('viewScopedFinance') && reaches(resource.data.domainId)) ||
+          can('reviewExpense') || can('verifyExpense') || can('approveExpense'));
+        // Create only as yourself, at the right entry stage (checked in the
+        // `submitExpense` callable). Direct client writes are closed so the
+        // approval chain cannot be skipped or forged.
+        allow write: if false;
+      }
+      match /income/{id} {
+        allow read: if can('viewWallet') || can('viewScopedFinance');
+        allow create: if can('logIncome') && request.resource.data.loggedBy == request.auth.uid;
+        allow update, delete: if false;       // ledger entries are append-only
+      }
 
-    // Announcements
-    match /announcements/{announcementId} {
-      allow read: if isSignedIn() && getUserData().orgId == resource.data.orgId;
-      allow create: if isSignedIn() && (
-        hasPermission('canPostAnnouncementsGlobal') ||
-        (hasPermission('canPostAnnouncementsDomain') && getUserData().domainId == request.resource.data.domainId)
-      );
-      allow update, delete: if isSignedIn() && (
-        hasPermission('canPostAnnouncementsGlobal') ||
-        (hasPermission('canPostAnnouncementsDomain') && getUserData().domainId == resource.data.domainId)
-      );
+      // ── Notifications, audit ─────────────────────────────────────────────
+      match /notices/{id} {
+        allow read: if request.auth.uid == resource.data.recipientId;
+        allow update: if request.auth.uid == resource.data.recipientId &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+        allow create, delete: if false;       // Cloud Functions fan out notices
+      }
+      match /audit/{id} {
+        allow read: if can('viewAudit');
+        allow write: if false;                // append-only, written by functions
+      }
     }
   }
 }

@@ -1,0 +1,18 @@
+# Archives & Backups
+*.tar.gz
+*.zip
+*.7z
+
+# Native platform folders not needed for Web build
+/android
+/ios
+/windows
+/macos
+/linux
+
+# Build artifacts and tools
+/build
+/.dart_tool
+/.pub-cache
+/.pub
+/flutter
