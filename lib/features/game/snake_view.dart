@@ -240,9 +240,11 @@ class _SnakeGameState extends ConsumerState<SnakeGame>
                   ),
                 ),
               ),
-              const SizedBox(height: Gap.md),
+              const SizedBox(height: Gap.lg),
+              _DPad(onTurn: _turn, ink: ink),
+              const SizedBox(height: Gap.lg),
               Text(
-                'Swipe or use the arrow keys. Eat every lit square to clear the word. The edges wrap around.',
+                'Use the arrows, swipe, or press the arrow keys. Eat every lit square to clear the word. The edges wrap around.',
                 style: context.text.bodySmall?.copyWith(
                   color: ink.withValues(alpha: 0.65),
                 ),
@@ -394,4 +396,52 @@ class _BoardPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_BoardPainter old) => true;
+}
+
+/// On-screen arrows. Reacts on touch-down so quick turns don't feel laggy.
+class _DPad extends StatelessWidget {
+  const _DPad({required this.onTurn, required this.ink});
+
+  final void Function(Dir) onTurn;
+  final Color ink;
+
+  Widget _key(Dir d, IconData icon, String label) => Semantics(
+    button: true,
+    label: label,
+    child: GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) {
+        HapticFeedback.selectionClick();
+        onTurn(d);
+      },
+      child: Container(
+        width: 68,
+        height: 60,
+        margin: const EdgeInsets.all(3),
+        decoration: BoxDecoration(
+          color: ink.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(Radii.md),
+        ),
+        child: Icon(icon, color: ink, size: 32),
+      ),
+    ),
+  );
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _key(Dir.up, Icons.keyboard_arrow_up_rounded, 'Up'),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _key(Dir.left, Icons.keyboard_arrow_left_rounded, 'Left'),
+            _key(Dir.down, Icons.keyboard_arrow_down_rounded, 'Down'),
+            _key(Dir.right, Icons.keyboard_arrow_right_rounded, 'Right'),
+          ],
+        ),
+      ],
+    ),
+  );
 }

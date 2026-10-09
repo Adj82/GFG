@@ -445,6 +445,11 @@ void main() {
       await tester.pump(const Duration(milliseconds: 600));
       expect(tester.takeException(), isNull);
 
+      // The on-screen arrows steer the snake.
+      await tester.tap(find.bySemanticsLabel('Up'));
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(tester.takeException(), isNull);
+
       // Switching tab pauses it rather than leaving it running unseen.
       router.go('/welcome');
       await tester.pumpAndSettle();
