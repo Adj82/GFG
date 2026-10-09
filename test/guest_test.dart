@@ -201,6 +201,48 @@ void main() {
       );
     });
 
+    test('team size and members are checked', () {
+      final e = _event().copyWith(teamMin: 2, teamMax: 3);
+      TeamMember m(String n, String mail) => TeamMember(name: n, email: mail);
+      String? v(String team, List<TeamMember> ms) =>
+          RegistrationRules.validateTeam(
+            e,
+            leaderEmail: 'lead@x.com',
+            teamName: team,
+            members: ms,
+          );
+      expect(v('', [m('Amy', 'a@x.com')]), 'Give your team a name.');
+      expect(v('Bytes', []), contains('at least 2'));
+      expect(v('Bytes', [m('Amy', 'a@x.com')]), isNull);
+      expect(v('Bytes', [m('Amy', 'a@x.com'), m('Bob', 'b@x.com')]), isNull);
+      expect(
+        v('Bytes', [
+          m('Amy', 'a@x.com'),
+          m('Bob', 'b@x.com'),
+          m('Cat', 'c@x.com'),
+        ]),
+        contains('at most 3'),
+      );
+      expect(v('Bytes', [m('Amy', 'nope')]), contains('Teammate details'));
+      expect(v('Bytes', [m('Amy', 'LEAD@x.com')]), contains('twice'));
+      expect(
+        v('Bytes', [m('Amy', 'a@x.com'), m('Bob', 'A@x.com')]),
+        contains('twice'),
+      );
+      // Solo events ignore team fields.
+      expect(
+        RegistrationRules.validateTeam(
+          _event(),
+          leaderEmail: 'l@x.com',
+          teamName: '',
+          members: const [],
+        ),
+        isNull,
+      );
+      expect(e.teamLabel, 'Teams of 2 to 3');
+      expect(_event().teamLabel, 'Solo');
+    });
+
     test('validates name and email', () {
       expect(RegistrationRules.validateName(' '), isNotNull);
       expect(RegistrationRules.validateName('Asha'), isNull);
@@ -286,6 +328,67 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 20));
       await actions.register(fresh, ravi);
     });
+
+    test(
+      'team registration holds the whole team and blocks double booking',
+      () async {
+        final c = await boot();
+        final e = upcoming(c);
+        await c.read(eventRepo).save(e.copyWith(teamMin: 2, teamMax: 3));
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        final ev = c.read(eventMapProvider)[e.id]!;
+        final actions = c.read(guestActionsProvider);
+        const mate = TeamMember(name: 'Ravi', email: 'Ravi@gmail.com');
+
+        await expectLater(
+          actions.register(ev, asha, teamName: 'Bytes'),
+          throwsStateError,
+        );
+        final reg = await actions.register(
+          ev,
+          asha,
+          teamName: 'Bytes',
+          members: [mate],
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        expect(reg.size, 2);
+        expect(reg.members.single.email, 'ravi@gmail.com');
+
+        // A teammate is on it too, and can't start a second team or go solo.
+        await expectLater(
+          actions.register(
+            ev,
+            const GuestProfile(name: 'New', email: 'new@gmail.com'),
+            teamName: 'Other',
+            members: [
+              const TeamMember(name: 'Ravi K', email: 'ravi@gmail.com'),
+            ],
+          ),
+          throwsA(
+            isA<StateError>().having(
+              (x) => x.message,
+              'message',
+              contains('already registered'),
+            ),
+          ),
+        );
+        await expectLater(
+          actions.register(
+            ev,
+            ravi,
+            teamName: 'Solo?',
+            members: [const TeamMember(name: 'Zed', email: 'z@gmail.com')],
+          ),
+          throwsStateError,
+        );
+
+        // Everyone on the team sees the registration on this device.
+        c
+            .read(guestProfileProvider.notifier)
+            .save(const GuestProfile(name: 'Ravi', email: 'ravi@gmail.com'));
+        expect(c.read(myRegistrationProvider(e.id))?.teamName, 'Bytes');
+      },
+    );
 
     test('finished and members-only events refuse guests', () async {
       final c = await boot();
@@ -429,6 +532,46 @@ void main() {
         },
       );
     }
+
+    testWidgets('a team registers through the form and the leader can cancel', (
+      tester,
+    ) async {
+      final c = await open(tester, const Size(430, 932));
+      final router = c.read(routerProvider);
+      final e = c.read(publicEventsProvider).firstWhere((x) => !x.isPast());
+      await c.read(eventRepo).save(e.copyWith(teamMin: 2, teamMax: 3));
+      await tester.pumpAndSettle();
+
+      router.go('/welcome/events/${e.id}');
+      await tester.pumpAndSettle();
+      expect(find.text('Teams of 2 to 3'), findsWidgets);
+      await tester.tap(find.byType(FilledButton).last);
+      await tester.pumpAndSettle();
+      expect(find.text('Register your team'), findsOneWidget);
+      expect(find.text('Teammate 1'), findsOneWidget);
+
+      // Submitting empty shows what's missing instead of registering.
+      await tester.tap(find.widgetWithText(FilledButton, 'Register team'));
+      await tester.pumpAndSettle();
+      expect(find.text('Give your team a name.'), findsWidgets);
+      expect(c.read(eventRegistrationsProvider(e.id)), isEmpty);
+
+      final fields = find.byType(TextFormField);
+      await tester.enterText(fields.at(0), 'Bytes');
+      await tester.enterText(fields.at(1), 'Asha Rao');
+      await tester.enterText(fields.at(2), 'asha@gmail.com');
+      await tester.enterText(fields.at(5), 'Ravi K');
+      await tester.enterText(fields.at(6), 'ravi@gmail.com');
+      await tester.tap(find.widgetWithText(FilledButton, 'Register team'));
+      await tester.pumpAndSettle();
+
+      final regs = c.read(eventRegistrationsProvider(e.id));
+      expect(regs, hasLength(1));
+      expect(regs.single.members.single.name, 'Ravi K');
+      expect(find.text('Team Bytes is registered'), findsOneWidget);
+      expect(find.text('Cancel'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
 
     testWidgets('snake plays from the Play tab and pauses when you leave', (
       tester,

@@ -31,6 +31,8 @@ class SocietyEvent implements Entity {
     this.organizerIds = const [],
     this.budget = 0,
     this.capacity,
+    this.teamMin = 1,
+    this.teamMax = 1,
     this.rsvpIds = const [],
     this.checkInOpen = false,
     this.cancelled = false,
@@ -54,6 +56,18 @@ class SocietyEvent implements Entity {
   /// Allocated budget in rupees.
   final double budget;
   final int? capacity;
+
+  /// Team size including the person registering. 1 and 1 means solo.
+  final int teamMin;
+  final int teamMax;
+  bool get isTeam => teamMax > 1;
+
+  /// "Teams of 2 to 4", "Teams of 3" or "Solo".
+  String get teamLabel => !isTeam
+      ? 'Solo'
+      : (teamMin == teamMax
+            ? 'Teams of $teamMax'
+            : 'Teams of $teamMin to $teamMax');
   final List<String> rsvpIds;
 
   /// Seed for rotating check-in codes.
@@ -87,6 +101,8 @@ class SocietyEvent implements Entity {
     List<String>? organizerIds,
     double? budget,
     Object? capacity = unset,
+    int? teamMin,
+    int? teamMax,
     List<String>? rsvpIds,
     bool? checkInOpen,
     bool? cancelled,
@@ -104,6 +120,8 @@ class SocietyEvent implements Entity {
     organizerIds: organizerIds ?? this.organizerIds,
     budget: budget ?? this.budget,
     capacity: identical(capacity, unset) ? this.capacity : capacity as int?,
+    teamMin: teamMin ?? this.teamMin,
+    teamMax: teamMax ?? this.teamMax,
     rsvpIds: rsvpIds ?? this.rsvpIds,
     checkInSecret: checkInSecret,
     checkInOpen: checkInOpen ?? this.checkInOpen,
@@ -126,6 +144,8 @@ class SocietyEvent implements Entity {
     organizerIds: readStrings(j['organizerIds']),
     budget: readDouble(j['budget']),
     capacity: j['capacity'] as int?,
+    teamMin: readInt(j['teamMin'], 1),
+    teamMax: readInt(j['teamMax'], 1),
     rsvpIds: readStrings(j['rsvpIds']),
     checkInSecret: j['checkInSecret'] as String,
     checkInOpen: j['checkInOpen'] as bool? ?? false,
@@ -149,6 +169,8 @@ class SocietyEvent implements Entity {
     'organizerIds': organizerIds,
     'budget': budget,
     'capacity': capacity,
+    'teamMin': teamMin,
+    'teamMax': teamMax,
     'rsvpIds': rsvpIds,
     'checkInSecret': checkInSecret,
     'checkInOpen': checkInOpen,

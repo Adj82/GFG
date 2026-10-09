@@ -360,10 +360,12 @@ class GuestEventCard extends ConsumerWidget {
                       const SizedBox(width: 4),
                       Text(
                         left == null
-                            ? 'Open to everyone'
+                            ? (event.isTeam
+                                  ? event.teamLabel
+                                  : 'Open to everyone')
                             : left == 0
                             ? 'Full'
-                            : '${Fmt.plural(left, 'seat')} left',
+                            : '${Fmt.plural(left, event.isTeam ? 'team slot' : 'seat')} left',
                         style: context.text.bodySmall?.copyWith(
                           color: left == 0 ? p.red : null,
                         ),

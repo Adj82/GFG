@@ -48,6 +48,11 @@ class GuestEventScreen extends ConsumerWidget {
     );
     final past = event.isPast();
     final live = event.isLive();
+    final me = ref.watch(guestProfileProvider);
+    final leads =
+        mine != null &&
+        me != null &&
+        mine.email == me.email.trim().toLowerCase();
 
     String when() {
       final same =
@@ -71,27 +76,39 @@ class GuestEventScreen extends ConsumerWidget {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('You’re registered', style: context.text.titleSmall),
                     Text(
-                      'Quote ${mine.reference} at the door',
+                      mine.isTeam
+                          ? 'Team ${mine.teamName} is registered'
+                          : 'You’re registered',
+                      style: context.text.titleSmall,
+                    ),
+                    Text(
+                      leads
+                          ? 'Quote ${mine.reference} at the door'
+                          : '${mine.name} registered your team. Ref ${mine.reference}',
                       style: context.text.bodySmall,
                     ),
                   ],
                 ),
               ),
-              TextButton(
-                onPressed: () async {
-                  final ok = await confirmDialog(
-                    context,
-                    title: 'Give up your seat?',
-                    message: 'You can register again while seats are left.',
-                    confirmLabel: 'Cancel registration',
-                    destructive: true,
-                  );
-                  if (ok) await ref.read(guestActionsProvider).cancel(mine);
-                },
-                child: const Text('Cancel'),
-              ),
+              if (leads)
+                TextButton(
+                  onPressed: () async {
+                    final ok = await confirmDialog(
+                      context,
+                      title: mine.isTeam
+                          ? 'Cancel your team’s registration?'
+                          : 'Give up your seat?',
+                      message: mine.isTeam
+                          ? 'The whole team loses its place. You can register again while slots are left.'
+                          : 'You can register again while seats are left.',
+                      confirmLabel: 'Cancel registration',
+                      destructive: true,
+                    );
+                    if (ok) await ref.read(guestActionsProvider).cancel(mine);
+                  },
+                  child: const Text('Cancel'),
+                ),
             ],
           ),
         );
@@ -142,13 +159,19 @@ class GuestEventScreen extends ConsumerWidget {
                         tone: Tone.green(context),
                         icon: Icons.circle,
                       ),
+                    if (event.isTeam)
+                      Pill(
+                        event.teamLabel,
+                        tone: Tone.blue(context),
+                        icon: Icons.groups_rounded,
+                      ),
                     if (!past)
                       Pill(
                         left == null
                             ? 'Open to everyone'
                             : left == 0
                             ? 'Full'
-                            : '${Fmt.plural(left, 'seat')} left',
+                            : '${Fmt.plural(left, event.isTeam ? 'team slot' : 'seat')} left',
                         tone: left == 0
                             ? Tone.red(context)
                             : Tone.neutral(context),
@@ -180,6 +203,16 @@ class GuestEventScreen extends ConsumerWidget {
                         icon: Icons.place_rounded,
                         label: 'Where',
                         value: event.venue,
+                      ),
+                      Divider(height: 1, color: p.line),
+                      InfoRow(
+                        icon: event.isTeam
+                            ? Icons.groups_rounded
+                            : Icons.person_rounded,
+                        label: 'Who can join',
+                        value: event.isTeam
+                            ? '${event.teamLabel}. One person registers the team and adds the rest.'
+                            : 'Solo. Register yourself.',
                       ),
                     ],
                   ),
@@ -241,6 +274,18 @@ class _Bar extends StatelessWidget {
 Future<void> showRegisterSheet(BuildContext context, SocietyEvent event) =>
     showFormSheet<void>(context, builder: (_) => _RegisterForm(event: event));
 
+class _MemberFields {
+  final name = TextEditingController();
+  final email = TextEditingController();
+  final roll = TextEditingController();
+
+  void dispose() {
+    name.dispose();
+    email.dispose();
+    roll.dispose();
+  }
+}
+
 class _RegisterForm extends ConsumerStatefulWidget {
   const _RegisterForm({required this.event});
 
@@ -257,13 +302,23 @@ class _RegisterFormState extends ConsumerState<_RegisterForm> {
   late final _email = TextEditingController(text: _saved?.email ?? '');
   late final _roll = TextEditingController(text: _saved?.rollNo ?? '');
   late final _college = TextEditingController(text: _saved?.college ?? 'KIIT');
+  final _team = TextEditingController();
+  late final List<_MemberFields> _members = [
+    if (widget.event.isTeam)
+      for (var i = 0; i < widget.event.teamMin - 1; i++) _MemberFields(),
+  ];
   var _busy = false;
   String? _error;
 
+  SocietyEvent get _e => widget.event;
+
   @override
   void dispose() {
-    for (final c in [_name, _email, _roll, _college]) {
+    for (final c in [_name, _email, _roll, _college, _team]) {
       c.dispose();
+    }
+    for (final m in _members) {
+      m.dispose();
     }
     super.dispose();
   }
@@ -278,17 +333,31 @@ class _RegisterFormState extends ConsumerState<_RegisterForm> {
       await ref
           .read(guestActionsProvider)
           .register(
-            widget.event,
+            _e,
             GuestProfile(
               name: _name.text,
               email: _email.text,
               rollNo: _roll.text,
               college: _college.text,
             ),
+            teamName: _team.text,
+            members: [
+              for (final m in _members)
+                TeamMember(
+                  name: m.name.text,
+                  email: m.email.text,
+                  rollNo: m.roll.text,
+                ),
+            ],
           );
       if (!mounted) return;
       Navigator.pop(context);
-      Toast.show(context, 'You’re in. See you there!');
+      Toast.show(
+        context,
+        _e.isTeam
+            ? 'Your team is registered. See you there!'
+            : 'You’re in. See you there!',
+      );
     } on StateError catch (e) {
       if (mounted) {
         setState(() {
@@ -301,29 +370,46 @@ class _RegisterFormState extends ConsumerState<_RegisterForm> {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
+    final team = _e.isTeam;
+    final mates = _e.teamMax - 1;
+
     return FormSheet(
       formKey: _form,
-      title: 'Register',
-      subtitle: widget.event.title,
-      submitLabel: 'Confirm my seat',
+      title: team ? 'Register your team' : 'Register',
+      subtitle: team ? '${_e.title} · ${_e.teamLabel}' : _e.title,
+      submitLabel: team ? 'Register team' : 'Confirm my seat',
       busy: _busy,
       onSubmit: _submit,
       children: [
+        if (team)
+          TextFormField(
+            controller: _team,
+            autofocus: true,
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(labelText: 'Team name'),
+            validator: (v) =>
+                (v ?? '').trim().isEmpty ? 'Give your team a name.' : null,
+          ),
+        if (team)
+          Text('You are the team leader', style: context.text.titleSmall),
         TextFormField(
           controller: _name,
-          autofocus: _saved == null,
+          autofocus: !team && _saved == null,
           textCapitalization: TextCapitalization.words,
           autofillHints: const [AutofillHints.name],
-          decoration: const InputDecoration(labelText: 'Full name'),
+          decoration: const InputDecoration(labelText: 'Your full name'),
           validator: RegistrationRules.validateName,
         ),
         TextFormField(
           controller: _email,
           keyboardType: TextInputType.emailAddress,
           autofillHints: const [AutofillHints.email],
-          decoration: const InputDecoration(
-            labelText: 'Email',
-            helperText: 'We’ll use it to recognise you at the door.',
+          decoration: InputDecoration(
+            labelText: 'Your email',
+            helperText: team
+                ? 'Updates about the team come here.'
+                : 'We’ll use it to recognise you at the door.',
           ),
           validator: RegistrationRules.validateEmail,
         ),
@@ -348,6 +434,79 @@ class _RegisterFormState extends ConsumerState<_RegisterForm> {
             ),
           ],
         ),
+        if (team) ...[
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Teammates (${_members.length} of $mates)',
+                  style: context.text.titleSmall,
+                ),
+              ),
+              Text('At least ${_e.teamMin - 1}', style: context.text.bodySmall),
+            ],
+          ),
+          for (var i = 0; i < _members.length; i++)
+            Panel(
+              color: p.surfaceAlt,
+              borderColor: Colors.transparent,
+              padding: const EdgeInsets.all(Gap.md),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Teammate ${i + 1}',
+                          style: context.text.labelLarge,
+                        ),
+                      ),
+                      if (_members.length > _e.teamMin - 1)
+                        IconButton(
+                          tooltip: 'Remove teammate ${i + 1}',
+                          visualDensity: VisualDensity.compact,
+                          icon: const Icon(Icons.close_rounded, size: 20),
+                          onPressed: () => setState(() {
+                            _members.removeAt(i).dispose();
+                          }),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: Gap.sm),
+                  TextFormField(
+                    controller: _members[i].name,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: const InputDecoration(labelText: 'Full name'),
+                    validator: RegistrationRules.validateName,
+                  ),
+                  const SizedBox(height: Gap.md),
+                  TextFormField(
+                    controller: _members[i].email,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: const InputDecoration(labelText: 'Email'),
+                    validator: RegistrationRules.validateEmail,
+                  ),
+                  const SizedBox(height: Gap.md),
+                  TextFormField(
+                    controller: _members[i].roll,
+                    decoration: const InputDecoration(
+                      labelText: 'Roll no. (optional)',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          if (_members.length < mates)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () => setState(() => _members.add(_MemberFields())),
+                icon: const Icon(Icons.person_add_alt_rounded),
+                label: const Text('Add a teammate'),
+              ),
+            ),
+        ],
         if (_error != null)
           Text(
             _error!,

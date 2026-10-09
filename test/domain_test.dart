@@ -225,4 +225,44 @@ void main() {
       expect(a.canManageMember(d.byRoll['2205077']!), isFalse);
     });
   });
+
+  group('core team', () {
+    test('only the six core roles see the treasury and every domain', () async {
+      final d = await _load();
+      bool can(String roll, Permission p) {
+        final m = d.byRoll[roll]!;
+        return Access(
+          me: m,
+          role: d.roles[m.roleId]!,
+          domains: d.domains,
+        ).can(p);
+      }
+
+      // President, VP, Technical, Event, Sponsorship, Marketing heads.
+      for (final roll in [
+        '2105101',
+        '2105188',
+        '2205140',
+        '2205162',
+        '2205170',
+        '2205171',
+      ]) {
+        expect(can(roll, Permission.viewWallet), isTrue, reason: roll);
+        expect(can(roll, Permission.viewAllDomains), isTrue, reason: roll);
+      }
+      // A domain lead and a plain member see neither.
+      for (final roll in ['2205211', '2305318']) {
+        expect(can(roll, Permission.viewWallet), isFalse, reason: roll);
+        expect(can(roll, Permission.viewAllDomains), isFalse, reason: roll);
+      }
+    });
+
+    test('coreIds names exactly six roles that exist', () async {
+      final d = await _load();
+      expect(DefaultRoles.coreIds, hasLength(6));
+      for (final id in DefaultRoles.coreIds) {
+        expect(d.roles.containsKey(id), isTrue, reason: id);
+      }
+    });
+  });
 }

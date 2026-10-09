@@ -100,6 +100,7 @@ void main() {
           '/settings',
           '/audit',
           '/handover',
+          '/domains',
           '/inbox',
           '/search',
           '/profile',
@@ -123,6 +124,9 @@ void main() {
         }
         for (final e in ex) {
           await visit(tester, c, '/funds/expense/${e.id}');
+        }
+        for (final d in c.read(domainsProvider)) {
+          await visit(tester, c, '/domains/${d.id}');
         }
         if (mt.isNotEmpty) await visit(tester, c, '/meetings/${mt.first.id}');
         if (ap.isNotEmpty) {

@@ -23,6 +23,7 @@ import '../features/handover/handover_screen.dart';
 import '../features/home/home_screen.dart';
 import '../features/inbox/inbox_screen.dart';
 import '../features/meetings/meeting_detail_screen.dart';
+import '../features/domains/domains_screen.dart';
 import '../features/meetings/meetings_screen.dart';
 import '../features/more/more_screen.dart';
 import '../features/people/member_screen.dart';
@@ -213,6 +214,16 @@ final routerProvider = Provider<GoRouter>((ref) {
           detail(
             ':id',
             (s) => MeetingDetailScreen(meetingId: s.pathParameters['id']!),
+          ),
+        ],
+      ),
+      detail(
+        '/domains',
+        (_) => const DomainsScreen(),
+        routes: [
+          detail(
+            ':id',
+            (s) => DomainDetailScreen(domainId: s.pathParameters['id']!),
           ),
         ],
       ),

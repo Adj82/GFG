@@ -29,6 +29,7 @@ enum Permission {
   // Oversight
   viewAnalytics('See analytics'),
   viewAudit('See the audit log'),
+  viewAllDomains('See the overview of every domain'),
   manageTerm('Run term handover');
 
   const Permission(this.label);

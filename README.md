@@ -14,7 +14,9 @@ See [BACKEND.md](BACKEND.md).
   registration, a Study tab that features [KIIT Katalog](https://kiitkatalog.gfgkiit.in/), and a
   snake game played on the contribution graph. A **Member login** button sits on every tab.
 - **Members** sign in and get the full panel below. Organisers choose per event whether it is
-  open to non-members, and see guest registrations on the event's People tab.
+  open to non-members and whether it is solo or for teams (fewest and most members). Team events
+  ask the leader for a team name and each teammate's name and email. Guest registrations, with
+  full team rosters, show on the event's People tab.
 
 ## Run
 

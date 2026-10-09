@@ -61,9 +61,9 @@ final myRegistrationProvider = Provider.family<EventRegistration?, String>((
 ) {
   final me = ref.watch(guestProfileProvider);
   if (me == null) return null;
-  final id = EventRegistration.idFor(eventId, me.email);
+  // Matches the leader or any teammate, so everyone on a team sees it.
   for (final r in ref.watch(eventRegistrationsProvider(eventId))) {
-    if (r.id == id) return r;
+    if (r.includes(me.email)) return r;
   }
   return null;
 });
@@ -75,10 +75,14 @@ class GuestActions extends ActionsBase {
 
   /// Takes a seat. Re-registering with the same email updates the details
   /// instead of taking a second seat.
+  ///
+  /// For team events, [who] is the team leader and [members] are the rest.
   Future<EventRegistration> register(
     SocietyEvent event,
-    GuestProfile who,
-  ) async {
+    GuestProfile who, {
+    String teamName = '',
+    List<TeamMember> members = const [],
+  }) async {
     final id = EventRegistration.idFor(event.id, who.email);
     final regs = ref.read(eventRegistrationsProvider(event.id));
     final existing = regs.where((r) => r.id == id).firstOrNull;
@@ -90,6 +94,15 @@ class GuestActions extends ActionsBase {
     );
     if (block != null) throw StateError(block.message);
 
+    final team = event.isTeam;
+    final bad = RegistrationRules.validateTeam(
+      event,
+      leaderEmail: who.email,
+      teamName: teamName,
+      members: members,
+    );
+    if (bad != null) throw StateError(bad);
+
     final reg = EventRegistration(
       id: id,
       eventId: event.id,
@@ -98,7 +111,20 @@ class GuestActions extends ActionsBase {
       rollNo: who.rollNo.trim(),
       college: who.college.trim(),
       createdAt: existing?.createdAt ?? now,
+      teamName: team ? teamName.trim() : '',
+      members: team
+          ? [
+              for (final m in members)
+                TeamMember(
+                  name: m.name.trim(),
+                  email: m.email.trim().toLowerCase(),
+                  rollNo: m.rollNo.trim(),
+                ),
+            ]
+          : const [],
     );
+    final clash = RegistrationRules.conflictFor(regs, reg);
+    if (clash != null) throw StateError(clash);
     await ref.read(registrationRepo).save(reg);
     ref.read(guestProfileProvider.notifier).save(who);
     return reg;

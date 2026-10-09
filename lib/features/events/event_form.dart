@@ -47,6 +47,13 @@ class _EventFormState extends ConsumerState<EventForm> {
   late DateTime? _end = widget.event?.endsAt;
   late String? _domainId = widget.event?.domainId;
   late List<String> _organizers = [...?widget.event?.organizerIds];
+  late bool _team = widget.event?.isTeam ?? false;
+  late final _teamMin = TextEditingController(
+    text: '${(widget.event?.isTeam ?? false) ? widget.event!.teamMin : 2}',
+  );
+  late final _teamMax = TextEditingController(
+    text: '${(widget.event?.isTeam ?? false) ? widget.event!.teamMax : 4}',
+  );
   late bool _public = widget.event?.isPublic ?? true;
   var _prep = true;
   var _busy = false;
@@ -63,7 +70,15 @@ class _EventFormState extends ConsumerState<EventForm> {
 
   @override
   void dispose() {
-    for (final c in [_title, _venue, _desc, _budget, _capacity]) {
+    for (final c in [
+      _title,
+      _venue,
+      _desc,
+      _budget,
+      _capacity,
+      _teamMin,
+      _teamMax,
+    ]) {
       c.dispose();
     }
     super.dispose();
@@ -86,6 +101,8 @@ class _EventFormState extends ConsumerState<EventForm> {
     final budget =
         double.tryParse(_budget.text.replaceAll(',', '').trim()) ?? 0;
     final capacity = int.tryParse(_capacity.text.trim());
+    final teamMin = _team ? int.parse(_teamMin.text.trim()) : 1;
+    final teamMax = _team ? int.parse(_teamMax.text.trim()) : 1;
     SocietyEvent result;
     if (_editing) {
       result = widget.event!.copyWith(
@@ -99,6 +116,8 @@ class _EventFormState extends ConsumerState<EventForm> {
         organizerIds: _organizers,
         budget: budget,
         capacity: capacity,
+        teamMin: teamMin,
+        teamMax: teamMax,
         isPublic: _public,
       );
       await actions.update(result);
@@ -114,6 +133,8 @@ class _EventFormState extends ConsumerState<EventForm> {
         organizerIds: _organizers,
         budget: budget,
         capacity: capacity,
+        teamMin: teamMin,
+        teamMax: teamMax,
         isPublic: _public,
         addPrepTasks: _prep,
       );
@@ -236,8 +257,8 @@ class _EventFormState extends ConsumerState<EventForm> {
               child: TextFormField(
                 controller: _capacity,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Seats',
+                decoration: InputDecoration(
+                  labelText: _team ? 'Team slots' : 'Seats',
                   hintText: 'Unlimited',
                 ),
                 validator: (v) {
@@ -249,6 +270,58 @@ class _EventFormState extends ConsumerState<EventForm> {
             ),
           ],
         ),
+        FieldLabel(
+          'Who takes part',
+          child: SegmentedButton<bool>(
+            showSelectedIcon: false,
+            segments: const [
+              ButtonSegment(value: false, label: Text('Solo')),
+              ButtonSegment(value: true, label: Text('Teams')),
+            ],
+            selected: {_team},
+            onSelectionChanged: (s) => setState(() => _team = s.first),
+          ),
+        ),
+        if (_team)
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: _teamMin,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Fewest members',
+                    helperText: 'Including the leader',
+                  ),
+                  validator: (v) {
+                    final n = int.tryParse((v ?? '').trim());
+                    return (n == null || n < 2 || n > 20)
+                        ? 'Use 2 to 20.'
+                        : null;
+                  },
+                ),
+              ),
+              const SizedBox(width: Gap.md),
+              Expanded(
+                child: TextFormField(
+                  controller: _teamMax,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Most members',
+                    helperText: 'Including the leader',
+                  ),
+                  validator: (v) {
+                    final n = int.tryParse((v ?? '').trim());
+                    final min = int.tryParse(_teamMin.text.trim()) ?? 2;
+                    return (n == null || n < min || n > 20)
+                        ? 'At least $min, at most 20.'
+                        : null;
+                  },
+                ),
+              ),
+            ],
+          ),
         TextFormField(
           controller: _desc,
           minLines: 3,

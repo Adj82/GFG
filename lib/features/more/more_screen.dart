@@ -23,6 +23,13 @@ class MoreScreen extends ConsumerWidget {
     final requests = ref.watch(pendingRequestsProvider).length;
 
     final workspace = <_Item>[
+      if (a.can(Permission.viewAllDomains))
+        const _Item(
+          Icons.forum_rounded,
+          'All domains',
+          'Every domain at a glance',
+          '/domains',
+        ),
       const _Item(
         Icons.campaign_rounded,
         'Announcements',

@@ -56,4 +56,50 @@ abstract final class RegistrationRules {
     }
     return null;
   }
+
+  /// Checks a team before it is saved. Null means fine. Solo events ignore
+  /// the team fields.
+  static String? validateTeam(
+    SocietyEvent e, {
+    required String leaderEmail,
+    required String teamName,
+    required List<TeamMember> members,
+  }) {
+    if (!e.isTeam) return null;
+    if (teamName.trim().isEmpty) return 'Give your team a name.';
+    final size = 1 + members.length;
+    if (size < e.teamMin) {
+      final need = e.teamMin - 1;
+      return 'This event needs at least ${e.teamMin} people. Add $need ${need == 1 ? 'teammate' : 'teammates'}.';
+    }
+    if (size > e.teamMax) {
+      return 'Teams can have at most ${e.teamMax} people.';
+    }
+    final seen = <String>{leaderEmail.trim().toLowerCase()};
+    for (final m in members) {
+      final bad = validateName(m.name) ?? validateEmail(m.email);
+      if (bad != null) return 'Teammate details: $bad';
+      if (!seen.add(m.email.trim().toLowerCase())) {
+        return '${m.email.trim()} is listed twice in your team.';
+      }
+    }
+    return null;
+  }
+
+  /// Anyone already on a different registration for the same event, so one
+  /// person can't hold two places.
+  static String? conflictFor(
+    Iterable<EventRegistration> others,
+    EventRegistration reg,
+  ) {
+    for (final o in others) {
+      if (o.id == reg.id) continue;
+      for (final e in reg.emails) {
+        if (o.includes(e)) {
+          return '$e is already registered for this event${o.isTeam ? ' with another team' : ''}.';
+        }
+      }
+    }
+    return null;
+  }
 }

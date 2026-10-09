@@ -7,7 +7,9 @@ abstract final class DefaultRoles {
   static const vicePresident = 'vice_president';
   static const treasurer = 'treasurer';
   static const technicalHead = 'technical_head';
-  static const nonTechnicalHead = 'non_technical_head';
+  static const eventHead = 'event_head';
+  static const sponsorshipHead = 'sponsorship_head';
+  static const marketingHead = 'marketing_head';
   static const domainLead = 'domain_lead';
   static const member = 'member';
 
@@ -90,6 +92,19 @@ abstract final class DefaultRoles {
     Permission.approveMembers,
     Permission.manageVault,
     Permission.viewAnalytics,
+    // The six-person core team sees the treasury and every domain.
+    Permission.viewWallet,
+    Permission.viewAllDomains,
+  };
+
+  /// The six core roles: President, VP and the four heads below.
+  static const coreIds = {
+    president,
+    vicePresident,
+    technicalHead,
+    eventHead,
+    sponsorshipHead,
+    marketingHead,
   };
 
   static const _coreHeads = [
@@ -103,8 +118,26 @@ abstract final class DefaultRoles {
       permissions: _corePermissions,
     ),
     Role(
-      id: nonTechnicalHead,
-      name: 'Non-Technical Head',
+      id: eventHead,
+      name: 'Event Head',
+      rank: 3,
+      scope: RoleScope.department,
+      tier: RoleTier.core,
+      isOfficeBearer: true,
+      permissions: _corePermissions,
+    ),
+    Role(
+      id: sponsorshipHead,
+      name: 'Sponsorship Head',
+      rank: 3,
+      scope: RoleScope.department,
+      tier: RoleTier.core,
+      isOfficeBearer: true,
+      permissions: _corePermissions,
+    ),
+    Role(
+      id: marketingHead,
+      name: 'Marketing Head',
       rank: 3,
       scope: RoleScope.department,
       tier: RoleTier.core,

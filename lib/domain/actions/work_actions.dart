@@ -143,6 +143,8 @@ class EventActions extends ActionsBase {
     List<String> organizerIds = const [],
     double budget = 0,
     int? capacity,
+    int teamMin = 1,
+    int teamMax = 1,
     bool isPublic = true,
     bool addPrepTasks = true,
   }) async {
@@ -158,6 +160,8 @@ class EventActions extends ActionsBase {
       organizerIds: {myId, ...organizerIds}.toList(),
       budget: budget,
       capacity: capacity,
+      teamMin: teamMin,
+      teamMax: teamMax,
       isPublic: isPublic,
       checkInSecret: _secret(),
       createdBy: myId,

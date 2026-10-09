@@ -56,7 +56,17 @@ class _HandoverScreenState extends ConsumerState<HandoverScreen> {
       holderId: null,
     ),
     const Office(
-      roleId: DefaultRoles.nonTechnicalHead,
+      roleId: DefaultRoles.eventHead,
+      dept: Department.nonTechnical,
+      holderId: null,
+    ),
+    const Office(
+      roleId: DefaultRoles.sponsorshipHead,
+      dept: Department.nonTechnical,
+      holderId: null,
+    ),
+    const Office(
+      roleId: DefaultRoles.marketingHead,
       dept: Department.nonTechnical,
       holderId: null,
     ),

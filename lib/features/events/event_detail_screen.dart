@@ -840,21 +840,52 @@ class _People extends ConsumerWidget {
                 children: [
                   for (var i = 0; i < guests.length; i++) ...[
                     if (i > 0) Divider(color: p.line),
-                    ListTile(
-                      leading: Avatar(guests[i].name),
-                      title: Text(guests[i].name),
-                      subtitle: Text(
-                        [
-                          guests[i].email,
-                          if (guests[i].rollNo.isNotEmpty) guests[i].rollNo,
-                          if (guests[i].college.isNotEmpty) guests[i].college,
-                        ].join(' · '),
+                    if (guests[i].isTeam)
+                      ExpansionTile(
+                        shape: const Border(),
+                        collapsedShape: const Border(),
+                        leading: const Icon(Icons.groups_rounded),
+                        title: Text(guests[i].teamName),
+                        subtitle: Text(
+                          '${guests[i].size} people · led by ${guests[i].name}',
+                        ),
+                        trailing: Text(
+                          guests[i].reference,
+                          style: context.text.labelMedium,
+                        ),
+                        childrenPadding: const EdgeInsets.only(bottom: Gap.sm),
+                        children: [
+                          for (final line in [
+                            '${guests[i].name} (leader) · ${guests[i].email}',
+                            for (final m in guests[i].members)
+                              '${m.name} · ${m.email}${m.rollNo.isEmpty ? '' : ' · ${m.rollNo}'}',
+                          ])
+                            ListTile(
+                              dense: true,
+                              leading: const Icon(
+                                Icons.person_outline_rounded,
+                                size: 20,
+                              ),
+                              title: Text(line),
+                            ),
+                        ],
+                      )
+                    else
+                      ListTile(
+                        leading: Avatar(guests[i].name),
+                        title: Text(guests[i].name),
+                        subtitle: Text(
+                          [
+                            guests[i].email,
+                            if (guests[i].rollNo.isNotEmpty) guests[i].rollNo,
+                            if (guests[i].college.isNotEmpty) guests[i].college,
+                          ].join(' · '),
+                        ),
+                        trailing: Text(
+                          guests[i].reference,
+                          style: context.text.labelMedium,
+                        ),
                       ),
-                      trailing: Text(
-                        guests[i].reference,
-                        style: context.text.labelMedium,
-                      ),
-                    ),
                   ],
                 ],
               ),

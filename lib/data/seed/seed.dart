@@ -239,11 +239,29 @@ abstract final class Seed {
       m(
         '2205162',
         'Meera Nair',
-        DefaultRoles.nonTechnicalHead,
+        DefaultRoles.eventHead,
         dept: nonTech,
         joinedDaysAgo: 710,
         branch: 'CSCE',
-        skills: ['Events', 'Partnerships'],
+        skills: ['Events', 'Logistics'],
+      ),
+      m(
+        '2205170',
+        'Dev Malhotra',
+        DefaultRoles.sponsorshipHead,
+        dept: nonTech,
+        joinedDaysAgo: 705,
+        branch: 'CSE',
+        skills: ['Partnerships', 'Negotiation'],
+      ),
+      m(
+        '2205171',
+        'Tanvi Roy',
+        DefaultRoles.marketingHead,
+        dept: nonTech,
+        joinedDaysAgo: 700,
+        branch: 'ECE',
+        skills: ['Branding', 'Social media'],
       ),
       m(
         '2205211',
@@ -750,7 +768,9 @@ abstract final class Seed {
         venue: 'Campus 17 Atrium',
         organizerIds: [u('2105101'), u('2205140'), u('2205162'), u('2205291')],
         budget: 75000,
-        capacity: 300,
+        capacity: 75,
+        teamMin: 2,
+        teamMax: 4,
         checkInSecret: secret(),
         rsvpIds: pick(24),
         createdBy: u('2105101'),
@@ -1904,7 +1924,9 @@ abstract final class Seed {
         DefaultRoles.president || DefaultRoles.vicePresident => 7,
         DefaultRoles.domainLead ||
         DefaultRoles.technicalHead ||
-        DefaultRoles.nonTechnicalHead ||
+        DefaultRoles.eventHead ||
+        DefaultRoles.sponsorshipHead ||
+        DefaultRoles.marketingHead ||
         DefaultRoles.treasurer => 11,
         _ => 5,
       };
