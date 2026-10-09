@@ -5,5 +5,6 @@ export 'json.dart';
 export 'member.dart';
 export 'org.dart';
 export 'people.dart';
+export 'registration.dart';
 export 'role.dart';
 export 'task.dart';

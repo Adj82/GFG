@@ -14,6 +14,11 @@ import '../features/events/events_screen.dart';
 import '../features/funds/approvals_screen.dart';
 import '../features/funds/expense_detail_screen.dart';
 import '../features/funds/funds_screen.dart';
+import '../features/guest/guest_event_screen.dart';
+import '../features/guest/guest_events_screen.dart';
+import '../features/guest/guest_shell.dart';
+import '../features/guest/play_screen.dart';
+import '../features/guest/study_screen.dart';
 import '../features/handover/handover_screen.dart';
 import '../features/home/home_screen.dart';
 import '../features/inbox/inbox_screen.dart';
@@ -34,6 +39,11 @@ import 'shell.dart';
 final rootNavigatorKey = GlobalKey<NavigatorState>();
 
 const _public = {'/login', '/join', '/forgot'};
+
+/// The visitor area: events, study help and the game. Open to anyone who
+/// isn't signed in; members are sent to their own panel instead.
+bool _isGuestArea(String loc) =>
+    loc == '/welcome' || loc.startsWith('/welcome/');
 
 final routerProvider = Provider<GoRouter>((ref) {
   final refresh = ValueNotifier(0);
@@ -66,9 +76,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       final loc = state.matchedLocation;
       final uid = ref.read(authUserIdProvider);
       final me = ref.read(currentMemberProvider);
-      final isPublic = _public.contains(loc);
+      final isPublic = _public.contains(loc) || _isGuestArea(loc);
 
-      if (uid == null) return isPublic ? null : '/login';
+      if (uid == null) return isPublic ? null : '/welcome';
       if (me == null) return isPublic ? null : '/login';
       if (me.status != MemberStatus.active) {
         return loc == '/status' ? null : '/status';
@@ -82,6 +92,39 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, shell) => GuestShell(shell: shell),
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/welcome',
+                builder: (_, _) => const GuestEventsScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/welcome/study',
+                builder: (_, _) => const StudyScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/welcome/play',
+                builder: (_, _) => const PlayScreen(),
+              ),
+            ],
+          ),
+        ],
+      ),
+      detail(
+        '/welcome/events/:id',
+        (s) => GuestEventScreen(eventId: s.pathParameters['id']!),
+      ),
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
       GoRoute(path: '/join', builder: (_, _) => const JoinScreen()),
       GoRoute(path: '/forgot', builder: (_, _) => const ForgotPasswordScreen()),
@@ -196,6 +239,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         (_) => const MyProfileScreen(),
         routes: [detail('edit', (_) => const EditProfileScreen())],
       ),
+      detail('/play', (_) => const MemberPlayScreen()),
       detail('/vault', (_) => const VaultScreen()),
       detail('/analytics', (_) => const AnalyticsScreen()),
       detail('/settings', (_) => const SettingsScreen()),

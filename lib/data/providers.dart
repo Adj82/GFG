@@ -65,6 +65,10 @@ final vaultRepo = _repo<VaultItem>(Collections.vault, VaultItem.fromJson);
 final commentRepo = _repo<Comment>(Collections.comments, Comment.fromJson);
 final noticeRepo = _repo<Notice>(Collections.notices, Notice.fromJson);
 final auditRepo = _repo<AuditEntry>(Collections.audit, AuditEntry.fromJson);
+final registrationRepo = _repo<EventRegistration>(
+  Collections.registrations,
+  EventRegistration.fromJson,
+);
 
 // Live collections ──────────────────────────────────────────────────────────
 
@@ -93,6 +97,7 @@ final vaultProvider = _live(vaultRepo);
 final commentsProvider = _live(commentRepo);
 final noticesProvider = _live(noticeRepo);
 final auditProvider = _live(auditRepo);
+final registrationsProvider = _live(registrationRepo);
 
 // Lookups ───────────────────────────────────────────────────────────────────
 

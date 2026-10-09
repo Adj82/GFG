@@ -58,6 +58,8 @@ orgs/{orgId}/members/{uid}       roleId, status, domainId, department, history[]
 orgs/{orgId}/applications/{id}
 orgs/{orgId}/tasks/{id}
 orgs/{orgId}/events/{id}         + events/{id}/private/secret  { checkInSecret }
+orgs/{orgId}/publicEvents/{id}   read-only mirror of events with isPublic, safe fields only
+orgs/{orgId}/registrations/{eventId_emailKey}   guest sign-ups, written by a function only
 orgs/{orgId}/attendance/{eventId_memberId}
 orgs/{orgId}/announcements/{id}
 orgs/{orgId}/meetings/{id}
@@ -89,6 +91,8 @@ Each one re-checks permission server-side with the same logic as `lib/domain`, t
 | `decideExpense` | `FinanceActions.decide` | Port `canAct`, `highestStageFor`, `stageAfterApproval`. Must be a transaction. Self-approval is rejected. |
 | `markReimbursed`, `logIncome` | `FinanceActions` | Needs `reimburse` / `logIncome`. |
 | `checkIn` | `EventActions.checkIn` | Reads `events/{id}/private/secret`, verifies the HMAC (`CheckInCode.verify`, 30 s window), writes attendance. The secret never reaches a client except the host's screen via a callable. |
+| `registerForEvent`, `cancelRegistration` | `GuestActions.register/cancel` | Callable that works **signed out** (use App Check and a rate limit). Re-runs `RegistrationRules.blockFor` inside a transaction so the last seat can't be double-booked; seats are `rsvpIds.length + registrations`. Id is `EventRegistration.idFor`, so one email takes one seat. |
+| `mirrorPublicEvent` | `publicEventsProvider` | Firestore trigger: copies title, type, times, venue, description, capacity, outcome of events with `isPublic` into `publicEvents`. The visitor screens read only this collection, never `events`. |
 | `startNewTerm` | `TermActions.startNewTerm` | One batch: history, roles, disable alumni, bump term. Requires `manageTerm`. |
 | `onWrite` triggers | `ActionsBase.notify`, `audit` | Fan out `notices` and write `audit` from document changes, so they cannot be skipped or forged. Push via FCM. |
 

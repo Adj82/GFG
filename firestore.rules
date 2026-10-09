@@ -104,6 +104,21 @@ service cloud.firestore {
         // checkInSecret must never be readable by attendees: store it in
         // events/{id}/private/secret and deny reads there (see BACKEND.md).
       }
+      // What signed-out visitors see: a mirror of events marked isPublic, kept
+      // by a function. It holds no budget, organisers or secrets, so it can be
+      // read without signing in.
+      match /publicEvents/{id} {
+        allow read: if true;
+        allow write: if false;
+      }
+      // Guest sign-ups. Created only by the callable `registerForEvent` (App
+      // Check, rate limit, seat check in a transaction). Organisers read them.
+      match /registrations/{id} {
+        allow read: if can('manageEvents') ||
+          (isActive() &&
+            request.auth.uid in get(/databases/$(database)/documents/orgs/$(orgId)/events/$(resource.data.eventId)).data.organizerIds);
+        allow write: if false;
+      }
       match /attendance/{id} {
         allow read: if isActive();
         allow write: if false;                // callable `checkIn` verifies the rotating code

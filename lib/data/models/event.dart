@@ -34,6 +34,7 @@ class SocietyEvent implements Entity {
     this.rsvpIds = const [],
     this.checkInOpen = false,
     this.cancelled = false,
+    this.isPublic = true,
     this.outcome = '',
   });
 
@@ -61,6 +62,9 @@ class SocietyEvent implements Entity {
   final bool checkInOpen;
   final bool cancelled;
 
+  /// Open to non-members: shows on the public home and takes guest sign-ups.
+  final bool isPublic;
+
   /// Short write-up after the event, used in the term report.
   final String outcome;
   final String createdBy;
@@ -86,6 +90,7 @@ class SocietyEvent implements Entity {
     List<String>? rsvpIds,
     bool? checkInOpen,
     bool? cancelled,
+    bool? isPublic,
     String? outcome,
   }) => SocietyEvent(
     id: id,
@@ -103,6 +108,7 @@ class SocietyEvent implements Entity {
     checkInSecret: checkInSecret,
     checkInOpen: checkInOpen ?? this.checkInOpen,
     cancelled: cancelled ?? this.cancelled,
+    isPublic: isPublic ?? this.isPublic,
     outcome: outcome ?? this.outcome,
     createdBy: createdBy,
     createdAt: createdAt,
@@ -124,6 +130,7 @@ class SocietyEvent implements Entity {
     checkInSecret: j['checkInSecret'] as String,
     checkInOpen: j['checkInOpen'] as bool? ?? false,
     cancelled: j['cancelled'] as bool? ?? false,
+    isPublic: j['isPublic'] as bool? ?? true,
     outcome: j['outcome'] as String? ?? '',
     createdBy: j['createdBy'] as String,
     createdAt: readDate(j['createdAt']),
@@ -146,6 +153,7 @@ class SocietyEvent implements Entity {
     'checkInSecret': checkInSecret,
     'checkInOpen': checkInOpen,
     'cancelled': cancelled,
+    'isPublic': isPublic,
     'outcome': outcome,
     'createdBy': createdBy,
     'createdAt': writeDate(createdAt),

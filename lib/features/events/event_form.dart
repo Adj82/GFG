@@ -47,6 +47,7 @@ class _EventFormState extends ConsumerState<EventForm> {
   late DateTime? _end = widget.event?.endsAt;
   late String? _domainId = widget.event?.domainId;
   late List<String> _organizers = [...?widget.event?.organizerIds];
+  late bool _public = widget.event?.isPublic ?? true;
   var _prep = true;
   var _busy = false;
   String? _error;
@@ -98,6 +99,7 @@ class _EventFormState extends ConsumerState<EventForm> {
         organizerIds: _organizers,
         budget: budget,
         capacity: capacity,
+        isPublic: _public,
       );
       await actions.update(result);
     } else {
@@ -112,6 +114,7 @@ class _EventFormState extends ConsumerState<EventForm> {
         organizerIds: _organizers,
         budget: budget,
         capacity: capacity,
+        isPublic: _public,
         addPrepTasks: _prep,
       );
     }
@@ -254,6 +257,15 @@ class _EventFormState extends ConsumerState<EventForm> {
           decoration: const InputDecoration(
             labelText: 'What’s it about?',
             alignLabelWithHint: true,
+          ),
+        ),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          value: _public,
+          onChanged: (v) => setState(() => _public = v),
+          title: const Text('Open to non-members'),
+          subtitle: const Text(
+            'Shows on the public home and lets any student register. Seats are shared with member RSVPs.',
           ),
         ),
         if (!_editing)

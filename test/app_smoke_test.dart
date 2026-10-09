@@ -52,6 +52,9 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    // Signed-out visitors land on the public home; members use the login button.
+    await tester.tap(find.text('Member login'));
+    await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextFormField).at(0), email);
     await tester.enterText(find.byType(TextFormField).at(1), Seed.password);
     await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));

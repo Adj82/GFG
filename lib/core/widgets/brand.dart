@@ -38,60 +38,90 @@ class BrandMark extends StatelessWidget {
   }
 }
 
-/// Decorative contribution-grid texture for hero slabs. Deterministic so it
+/// Contribution-grid banner whose lit squares spell "GFG". The rest of the
+/// grid is faint filler so the letters read clearly. Deterministic, so it
 /// doesn't flicker on rebuild.
 class GridTexture extends StatelessWidget {
   const GridTexture({
     super.key,
     this.seed = 7,
-    this.columns = 22,
-    this.rows = 6,
+    this.columns = 21,
     this.cell = 12,
+    this.word = 'GFG',
   });
+
+  static const rows = 6;
+
+  /// 5 wide x 6 tall glyphs. '#' is a lit square.
+  static const _glyphs = <String, List<String>>{
+    'G': ['.###.', '#...#', '#....', '#.###', '#...#', '.###.'],
+    'F': ['#####', '#....', '####.', '#....', '#....', '#....'],
+  };
 
   final int seed;
   final int columns;
-  final int rows;
   final double cell;
+  final String word;
+
+  /// Lit cells as "x,y" keys, with the word centred horizontally.
+  Set<String> _lit() {
+    final width = word.length * 5 + (word.length - 1);
+    var x0 = ((columns - width) / 2).floor();
+    final lit = <String>{};
+    for (final ch in word.split('')) {
+      final g = _glyphs[ch];
+      if (g == null) continue;
+      for (var y = 0; y < rows; y++) {
+        for (var x = 0; x < 5; x++) {
+          if (g[y][x] == '#') lit.add('${x0 + x},$y');
+        }
+      }
+      x0 += 6;
+    }
+    return lit;
+  }
 
   @override
   Widget build(BuildContext context) {
     final r = Random(seed);
     final p = context.palette;
-    final levels = [
+    final lit = _lit();
+    final faint = [
       p.onForest.withValues(alpha: 0.05),
-      p.green.withValues(alpha: 0.35),
-      p.green.withValues(alpha: 0.6),
-      p.green,
-      p.greenStrong,
+      p.onForest.withValues(alpha: 0.05),
+      p.green.withValues(alpha: 0.16),
     ];
-    return ExcludeSemantics(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (var y = 0; y < rows; y++)
-            Padding(
-              padding: EdgeInsets.only(bottom: y == rows - 1 ? 0 : 3),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (var x = 0; x < columns; x++)
-                    Container(
-                      width: cell,
-                      height: cell,
-                      margin: EdgeInsets.only(right: x == columns - 1 ? 0 : 3),
-                      decoration: BoxDecoration(
-                        color:
-                            levels[(r.nextDouble() * r.nextDouble() * 5)
-                                .floor()
-                                .clamp(0, 4)],
-                        borderRadius: BorderRadius.circular(cell * 0.28),
+    return Semantics(
+      label: word,
+      child: ExcludeSemantics(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var y = 0; y < rows; y++)
+              Padding(
+                padding: EdgeInsets.only(bottom: y == rows - 1 ? 0 : 3),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (var x = 0; x < columns; x++)
+                      Container(
+                        width: cell,
+                        height: cell,
+                        margin: EdgeInsets.only(
+                          right: x == columns - 1 ? 0 : 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: lit.contains('$x,$y')
+                              ? p.green
+                              : faint[r.nextInt(faint.length)],
+                          borderRadius: BorderRadius.circular(cell * 0.28),
+                        ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }

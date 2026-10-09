@@ -13,6 +13,7 @@ import '../../core/widgets/page.dart';
 import '../../data/derived.dart';
 import '../../data/models/models.dart';
 import '../../data/providers.dart';
+import '../../domain/actions/guest_actions.dart';
 import '../../domain/actions/work_actions.dart';
 import '../../domain/expense_rules.dart';
 import '../funds/expense_form.dart';
@@ -743,6 +744,7 @@ class _People extends ConsumerWidget {
           if (px != py) return px ? -1 : 1;
           return x.name.compareTo(y.name);
         });
+    final guests = ref.watch(eventRegistrationsProvider(event.id));
     final actions = ref.read(eventActionsProvider);
     final canMark =
         !event.cancelled &&
@@ -810,6 +812,54 @@ class _People extends ConsumerWidget {
               ],
             ),
           ),
+        if (event.isPublic) ...[
+          const SizedBox(height: Gap.xl),
+          Text(
+            'Guest registrations (${guests.length})',
+            style: context.text.titleMedium,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'Non-members who signed up from the public page.',
+            style: context.text.bodySmall,
+          ),
+          const SizedBox(height: Gap.md),
+          if (guests.isEmpty)
+            const Panel(
+              child: EmptyState(
+                icon: Icons.person_add_alt_rounded,
+                title: 'No guests yet',
+                message: 'Share the app link so students can register.',
+                compact: true,
+              ),
+            )
+          else
+            Panel(
+              padding: EdgeInsets.zero,
+              child: Column(
+                children: [
+                  for (var i = 0; i < guests.length; i++) ...[
+                    if (i > 0) Divider(color: p.line),
+                    ListTile(
+                      leading: Avatar(guests[i].name),
+                      title: Text(guests[i].name),
+                      subtitle: Text(
+                        [
+                          guests[i].email,
+                          if (guests[i].rollNo.isNotEmpty) guests[i].rollNo,
+                          if (guests[i].college.isNotEmpty) guests[i].college,
+                        ].join(' · '),
+                      ),
+                      trailing: Text(
+                        guests[i].reference,
+                        style: context.text.labelMedium,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+        ],
       ],
     );
   }

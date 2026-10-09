@@ -19,6 +19,7 @@ abstract final class Collections {
   static const comments = 'comments';
   static const notices = 'notices';
   static const audit = 'audit';
+  static const registrations = 'registrations';
 
   /// Local-only: stands in for Firebase Auth. Not created in Firestore.
   static const credentials = 'credentials';
@@ -40,6 +41,7 @@ abstract final class Collections {
     comments,
     notices,
     audit,
+    registrations,
     credentials,
   ];
 }

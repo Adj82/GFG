@@ -8,12 +8,20 @@ This build is **frontend complete and backend ready**. All data is local (seeded
 data) behind repository interfaces, so Firebase can be plugged in without touching a screen.
 See [BACKEND.md](BACKEND.md).
 
+## Two doors
+
+- **Visitors** (anyone not signed in) land on the public home: live and upcoming events with
+  registration, a Study tab that features [KIIT Katalog](https://kiitkatalog.gfgkiit.in/), and a
+  snake game played on the contribution graph. A **Member login** button sits on every tab.
+- **Members** sign in and get the full panel below. Organisers choose per event whether it is
+  open to non-members, and see guest registrations on the event's People tab.
+
 ## Run
 
 ```bash
 flutter pub get
 flutter run -d chrome        # or any device
-flutter test                 # 19 tests: rules, flows, and a walk of every screen
+flutter test                 # 37 tests: rules, flows, snake, and a walk of every screen
 ```
 
 Demo accounts (password `gfg@1234`): President `2105101`, Treasurer `2205077`,

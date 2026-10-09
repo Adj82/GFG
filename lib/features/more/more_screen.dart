@@ -149,6 +149,12 @@ class MoreScreen extends ConsumerWidget {
                 group('Admin', admin),
                 group('App', const [
                   _Item(
+                    Icons.sports_esports_rounded,
+                    'Take a break',
+                    'Snake on the contribution graph',
+                    '/play',
+                  ),
+                  _Item(
                     Icons.settings_rounded,
                     'Settings',
                     'Appearance, password, sign out',

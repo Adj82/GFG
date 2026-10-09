@@ -97,6 +97,17 @@ class _BrandSlab extends ConsumerWidget {
         children: [
           Row(
             children: [
+              if (context.canPop()) ...[
+                IconButton(
+                  tooltip: 'Back',
+                  onPressed: () => context.pop(),
+                  icon: Icon(Icons.arrow_back_rounded, color: p.onForest),
+                  style: IconButton.styleFrom(
+                    backgroundColor: p.onForest.withValues(alpha: 0.1),
+                  ),
+                ),
+                const SizedBox(width: Gap.md),
+              ],
               const BrandMark(size: 40, onDark: true),
               const SizedBox(width: Gap.md),
               Text(
