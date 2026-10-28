@@ -94,7 +94,7 @@ final pendingRequestsProvider = Provider<List<Application>>((ref) {
         (x) =>
             x.stage.isOpen &&
             members[x.memberId]?.status == MemberStatus.pending &&
-            a.reaches(domainId: x.domainId),
+            a.canReview(x.domainId),
       )
       .toList()
     ..sort((x, y) => x.createdAt.compareTo(y.createdAt));

@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/models.dart';
@@ -32,6 +30,40 @@ class AuthActions extends ActionsBase {
   Future<void> signIn(String email, String password) =>
       _auth.signIn(email: email.trim().toLowerCase(), password: password);
 
+  /// Google sign-in, limited to the campus domain. Three outcomes:
+  /// a returning member just lands in the app; someone the President or VP
+  /// added beforehand (an [Invite]) is turned into a member on the spot; and
+  /// anyone else is signed in but has no record yet, so the app sends them to
+  /// the join form.
+  Future<void> signInWithGoogle({String? simulatedEmail}) async {
+    final domain = ref.read(organizationProvider)?.emailDomain ?? 'kiit.ac.in';
+    final who = await _auth.signInWithGoogle(
+      allowedDomain: domain,
+      simulatedEmail: simulatedEmail,
+    );
+    if (!who.email.toLowerCase().endsWith('@$domain')) {
+      await _auth.signOut();
+      throw AuthFailure('Use your @$domain Google account.');
+    }
+    final members = ref.read(memberRepo);
+    if (await members.fetch(who.uid) != null) return;
+    final invite = await ref.read(inviteRepo).fetch(who.email.toLowerCase());
+    if (invite == null) return;
+    await members.save(
+      Member(
+        id: who.uid,
+        name: invite.name.trim().isEmpty ? who.name : invite.name.trim(),
+        email: who.email.toLowerCase(),
+        roleId: invite.roleId,
+        status: MemberStatus.active,
+        joinedAt: now,
+        domainId: invite.domainId,
+        department: invite.department,
+      ),
+    );
+    await ref.read(inviteRepo).delete(invite.id);
+  }
+
   Future<void> signOut() => _auth.signOut();
 
   Future<void> requestPasswordReset(String email) =>
@@ -41,7 +73,7 @@ class AuthActions extends ActionsBase {
   Future<void> applyToJoin({
     required String name,
     required String email,
-    required String password,
+    String? password,
     required String domainId,
     required int year,
     required String branch,
@@ -49,7 +81,15 @@ class AuthActions extends ActionsBase {
     String experience = '',
     String portfolio = '',
   }) async {
-    final uid = await _auth.signUp(email: email, password: password);
+    // Signed in with Google already: no password, and the email is Google's.
+    final signedIn = _auth.currentUserId;
+    final String uid;
+    if (signedIn != null) {
+      uid = signedIn;
+      email = _auth.currentEmail ?? email;
+    } else {
+      uid = await _auth.signUp(email: email, password: password ?? '');
+    }
     final at = now;
     await ref
         .read(memberRepo)
@@ -83,7 +123,7 @@ class AuthActions extends ActionsBase {
         );
     final domain = ref.read(domainMapProvider)[domainId]?.name ?? 'a domain';
     await notify(
-      holdersOf(Permission.approveMembers, domainId: domainId),
+      reviewersOf(domainId),
       kind: NoticeKind.people,
       title: 'New join request',
       body: '${name.trim()} wants to join $domain.',
@@ -207,47 +247,37 @@ class PeopleActions extends ActionsBase {
     }
   }
 
-  static String temporaryPassword() {
-    const chars = 'abcdefghjkmnpqrstuvwxyz23456789';
-    final r = Random.secure();
-    return 'gfg-${List.generate(6, (_) => chars[r.nextInt(chars.length)]).join()}';
-  }
-
-  /// President/VP adds a core member or lead directly (doc §4). Returns the
-  /// temporary password to share with them.
-  Future<String> addMember({
+  /// President/VP adds a core member or lead ahead of time. They get access
+  /// the first time they sign in with Google using this email.
+  Future<void> inviteMember({
     required String name,
     required String email,
     required String roleId,
     String? domainId,
     Department? dept,
   }) async {
-    final temp = temporaryPassword();
-    final uid = await ref
-        .read(authRepositoryProvider)
-        .createAccount(email: email, temporaryPassword: temp);
+    final e = email.trim().toLowerCase();
+    if (ref.read(membersProvider).any((m) => m.email.toLowerCase() == e)) {
+      throw const AuthFailure('That email already has an account.');
+    }
     final role = ref.read(roleMapProvider)[roleId];
     await ref
-        .read(memberRepo)
+        .read(inviteRepo)
         .save(
-          Member(
-            id: uid,
+          Invite(
+            id: e,
             name: name.trim(),
-            email: email.trim().toLowerCase(),
             roleId: roleId,
-            status: MemberStatus.active,
-            joinedAt: now,
             domainId: domainId,
             department: dept,
-            needsPasswordReset: true,
+            createdBy: myId,
+            createdAt: now,
           ),
         );
     await audit(
-      'member.created',
+      'member.invited',
       '${access.me.name} added ${name.trim()} as ${role?.name ?? roleId}',
-      targetId: uid,
     );
-    return temp;
   }
 
   Future<void> changeRole(
@@ -276,7 +306,11 @@ class PeopleActions extends ActionsBase {
     );
   }
 
+  /// Suspend or restore an account. History is always kept.
   Future<void> setDisabled(Member m, bool disabled) async {
+    if (!access.canSuspend(m)) {
+      throw StateError('You can’t suspend ${m.name}.');
+    }
     await ref
         .read(memberRepo)
         .save(
@@ -286,8 +320,8 @@ class PeopleActions extends ActionsBase {
           ),
         );
     await audit(
-      disabled ? 'member.disabled' : 'member.enabled',
-      '${access.me.name} ${disabled ? 'disabled' : 're-enabled'} ${m.name}',
+      disabled ? 'member.suspended' : 'member.restored',
+      '${access.me.name} ${disabled ? 'suspended' : 'restored'} ${m.name}',
       targetId: m.id,
     );
   }

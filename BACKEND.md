@@ -1,15 +1,55 @@
 # SocietyOS — backend hand-off
 
-The frontend is finished and runs entirely on local data. Nothing in `lib/features` or
-`lib/domain` knows where data lives, so the backend phase is: **implement two interfaces,
-swap one provider, deploy rules and functions.** No screen changes.
+Sign-in is **Google only, limited to @kiit.ac.in**, and all member data lives in Firestore.
+The Firebase code is written (`lib/data/firebase/`) and compiled, but it has **not been run
+against a real project**: do the steps below and test on a phone before relying on it.
+The app still runs on demo data unless you build with `--dart-define=USE_FIREBASE=true`.
+
+## Go live, step by step
+
+1. Create a Firebase project. Turn on **Authentication → Google**. Add your Android SHA-1 and the
+   web domain under Authentication → Settings → Authorised domains.
+2. Create **Firestore** (production mode) and deploy `firestore.rules`.
+3. In this folder run `dart pub global activate flutterfire_cli`, then `flutterfire configure`.
+   It overwrites `lib/firebase_options.dart` with your project's settings.
+4. One-time data: `cd firebase && npm i firebase-admin`, point `GOOGLE_APPLICATION_CREDENTIALS`
+   at a service-account key, then `node bootstrap.mjs president@kiit.ac.in "Full Name"`. It writes
+   the organisation, 15 domains and 8 roles, and invites the first President.
+5. Run with `flutter run --dart-define=USE_FIREBASE=true` (add the same flag to your release build,
+   and set `kDemoMode = false` in `lib/app/app.dart`).
+6. Sign in as that President. In **People → Add member** invite the other five core members and every
+   domain lead by their kiit.ac.in email. Each one gets their role the first time they tap
+   "Continue with Google". Everyone else taps Continue with Google, picks a domain, and waits for
+   approval.
+
+## Who can do what (enforced in `firestore.rules`, mirrored in `lib/domain/access.dart`)
+
+- **Join requests** go to the domain lead and to all six core roles (`canReview`).
+- **Suspend / restore**: the six core roles can suspend anyone but themselves (`suspendAnyone`);
+  a domain lead can suspend only plain members of their own domain (`suspendMembers`). A suspended
+  account loses all data access immediately and is sent to the "account suspended" screen.
+- **Treasury and the all-domains overview**: the six core roles only.
+- **Leads and core are added before they sign in** as invites (`invites/{email}`), claimed on first
+  Google sign-in.
+
+## Still to build before the public side works on Firebase
+
+The member side is complete. These need **Cloud Functions** (not written yet) and the rules keep
+them closed until then:
+
+- `registerForEvent` / `cancelRegistration`: guest sign-ups (seat check in a transaction, App Check,
+  rate limit). Until it exists, visitors cannot register on the Firebase build.
+- A `publicEvents` mirror: a trigger copying events marked public (without budget, organisers or
+  the check-in secret), so signed-out visitors can read the event list.
+- Hardening, optional: move expense stage changes, attendance check-in and notification fan-out into
+  callables. Today the rules only check *who* may write, and the app enforces the stage order.
 
 ## 1. The seam
 
 | Interface (`lib/data/repositories/repository.dart`) | Local impl today | Firebase impl to write |
 |---|---|---|
-| `Repository<T>`: `watchAll`, `fetchAll`, `fetch`, `save`, `saveAll`, `delete` | `LocalRepository<T>` (JSON docs in shared_preferences) | `FirestoreRepository<T>` |
-| `AuthRepository`: `watchUserId`, `signIn`, `signUp`, `signOut`, `createAccount`, `requestPasswordReset`, `changePassword` | `LocalAuthRepository` | `FirebaseAuthRepository` |
+| `Repository<T>`: `watchAll`, `fetchAll`, `fetch`, `save`, `saveAll`, `delete` | `LocalRepository<T>` (JSON docs in shared_preferences) | `FirestoreRepository<T>` (written) |
+| `AuthRepository`: `watchUserId`, `signInWithGoogle`, `signOut` (+ demo-only password methods) | `LocalAuthRepository` | `FirebaseAuthRepository` (written) |
 
 Swap in `lib/data/providers.dart`: `_repo<T>(...)` builds a `LocalRepository` and
 `authRepositoryProvider` builds `LocalAuthRepository`. Return the Firebase versions instead,
@@ -78,13 +118,16 @@ so nobody can write their own `roleId`.
 Indexes you will need: `tasks (domainId, status)`, `expenses (stage, domainId)`,
 `attendance (targetId, memberId)`, `notices (recipientId, createdAt desc)`.
 
-## 3. Cloud Functions (the parts a client must not do)
+## 3. Cloud Functions (hardening; only the guest ones are required)
+
+The current rules let the app write most things directly after checking *who* may. The table below is
+what to move server-side. Required for the public side: `registerForEvent`, `cancelRegistration`,
+`mirrorPublicEvent`. The rest is optional hardening.
 
 Each one re-checks permission server-side with the same logic as `lib/domain`, then writes with the Admin SDK.
 
 | Function | Replaces (Dart) | Notes |
 |---|---|---|
-| `createAccount` | `AuthRepository.createAccount` | Admin-created users get a temp password and `needsPasswordReset: true`. |
 | `acceptApplication`, `declineApplication` | `PeopleActions.accept/decline` | Checks `approveMembers` + reach. |
 | `changeRole`, `setDisabled` | `PeopleActions.changeRole/setDisabled` | `Access.canManageMember`. Also revoke refresh tokens when disabling. |
 | `submitExpense` | `FinanceActions.submit` | Computes the entry stage with `ExpenseRules.entryStage` from the caller's *server-side* role. |

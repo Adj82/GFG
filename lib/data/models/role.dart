@@ -25,6 +25,8 @@ enum Permission {
   approveMembers('Review join requests'),
   manageMembers('Add members, change roles, disable accounts'),
   manageRoles('Edit roles and permissions'),
+  suspendAnyone('Suspend anyone’s account'),
+  suspendMembers('Suspend members of their own domain'),
 
   // Oversight
   viewAnalytics('See analytics'),

@@ -20,6 +20,7 @@ abstract final class Collections {
   static const notices = 'notices';
   static const audit = 'audit';
   static const registrations = 'registrations';
+  static const invites = 'invites';
 
   /// Local-only: stands in for Firebase Auth. Not created in Firestore.
   static const credentials = 'credentials';
@@ -42,6 +43,7 @@ abstract final class Collections {
     notices,
     audit,
     registrations,
+    invites,
     credentials,
   ];
 }
@@ -70,6 +72,19 @@ abstract interface class Repository<T extends Entity> {
   Future<void> delete(String id);
 }
 
+/// Who Google says just signed in.
+class GoogleIdentity {
+  const GoogleIdentity({
+    required this.uid,
+    required this.email,
+    required this.name,
+  });
+
+  final String uid;
+  final String email;
+  final String name;
+}
+
 class AuthFailure implements Exception {
   const AuthFailure(this.message);
   final String message;
@@ -87,17 +102,21 @@ abstract interface class AuthRepository {
 
   Future<String> signIn({required String email, required String password});
 
+  /// Verified email of the signed-in user, or null.
+  String? get currentEmail;
+
+  /// Google sign-in, limited to [allowedDomain] (e.g. kiit.ac.in). Throws
+  /// [AuthFailure] for any other account and leaves nobody signed in.
+  /// [simulatedEmail] is only read by the on-device demo implementation.
+  /// Backend: `GoogleSignIn` + `signInWithCredential`, then check the token's
+  /// `email_verified` and domain.
+  Future<GoogleIdentity> signInWithGoogle({
+    required String allowedDomain,
+    String? simulatedEmail,
+  });
+
   /// Self sign-up (members joining via a join request).
   Future<String> signUp({required String email, required String password});
-
-  /// Creates an account for someone else with a temporary password
-  /// (President adding core team / leads, doc §4).
-  /// Backend: a callable Cloud Function using the Admin SDK, so the
-  /// President's own session is not replaced.
-  Future<String> createAccount({
-    required String email,
-    required String temporaryPassword,
-  });
 
   Future<void> changePassword({required String newPassword});
 

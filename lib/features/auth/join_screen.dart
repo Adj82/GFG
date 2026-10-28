@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/app.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/palette.dart';
 import '../../core/widgets/basics.dart';
@@ -31,6 +32,10 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
   final _portfolio = TextEditingController();
   String? _domainId;
   int _year = 1;
+  var _seeded = false;
+
+  /// Signed in with Google already, so no password and a fixed email.
+  bool get _signedIn => ref.read(authUserIdProvider) != null;
   var _busy = false;
   String? _error;
 
@@ -50,6 +55,27 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
     super.dispose();
   }
 
+  Future<void> _google() async {
+    String? simulated;
+    if (kDemoMode) {
+      simulated = await askDemoGoogleEmail(context);
+      if (simulated == null) return;
+    }
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await ref
+          .read(authActionsProvider)
+          .signInWithGoogle(simulatedEmail: simulated);
+    } catch (e) {
+      if (mounted) setState(() => _error = e.toString());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _submit() async {
     if (!_form.currentState!.validate()) return;
     if (_domainId == null) {
@@ -66,7 +92,7 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
           .applyToJoin(
             name: _name.text,
             email: _email.text,
-            password: _password.text,
+            password: _signedIn ? null : _password.text,
             domainId: _domainId!,
             year: _year,
             branch: _branch.text,
@@ -87,6 +113,38 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
     final org = ref.watch(organizationProvider);
     final domains = ref.watch(domainsProvider);
     final closed = org != null && !org.recruitmentOpen;
+    final uid = ref.watch(authUserIdProvider);
+    final googleEmail = ref.read(authRepositoryProvider).currentEmail;
+    final signedIn = uid != null;
+    if (signedIn && !_seeded) {
+      _seeded = true;
+      _email.text = googleEmail ?? '';
+    }
+    if (!signedIn && !kDemoMode) {
+      return AuthScaffold(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Request to join', style: context.text.headlineLarge),
+            const SizedBox(height: 4),
+            Text(
+              'First sign in with your @${org?.emailDomain ?? 'kiit.ac.in'} Google account, then pick a domain.',
+              style: context.text.bodyMedium?.copyWith(color: p.inkMuted),
+            ),
+            const SizedBox(height: Gap.xl),
+            FilledButton.icon(
+              onPressed: _busy ? null : _google,
+              icon: const Icon(Icons.login_rounded),
+              label: const Text('Continue with Google'),
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: Gap.md),
+              Text(_error!, style: TextStyle(color: p.red)),
+            ],
+          ],
+        ),
+      );
+    }
 
     return AuthScaffold(
       child: closed
@@ -114,9 +172,16 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
                   Align(
                     alignment: Alignment.centerLeft,
                     child: TextButton.icon(
-                      onPressed: () => context.go('/login'),
+                      onPressed: () async {
+                        if (signedIn) {
+                          await ref.read(authActionsProvider).signOut();
+                        }
+                        if (context.mounted) context.go('/login');
+                      },
                       icon: const Icon(Icons.arrow_back_rounded, size: 18),
-                      label: const Text('Sign in'),
+                      label: Text(
+                        signedIn ? 'Use a different account' : 'Sign in',
+                      ),
                     ),
                   ),
                   Text('Request to join', style: context.text.headlineLarge),
@@ -140,6 +205,7 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
                   const SizedBox(height: Gap.lg),
                   TextFormField(
                     controller: _email,
+                    readOnly: signedIn,
                     keyboardType: TextInputType.emailAddress,
                     decoration: InputDecoration(
                       labelText: 'Campus email',
@@ -150,16 +216,18 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
                         .read(authActionsProvider)
                         .validateCampusEmail(v ?? ''),
                   ),
-                  const SizedBox(height: Gap.lg),
-                  TextFormField(
-                    controller: _password,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Create a password',
-                      prefixIcon: Icon(Icons.lock_outline_rounded),
+                  if (!signedIn) ...[
+                    const SizedBox(height: Gap.lg),
+                    TextFormField(
+                      controller: _password,
+                      obscureText: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Create a password',
+                        prefixIcon: Icon(Icons.lock_outline_rounded),
+                      ),
+                      validator: passwordProblem,
                     ),
-                    validator: passwordProblem,
-                  ),
+                  ],
                   const SizedBox(height: Gap.xl),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,

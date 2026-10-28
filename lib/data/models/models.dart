@@ -1,6 +1,7 @@
 export 'content.dart';
 export 'event.dart';
 export 'finance.dart';
+export 'invite.dart';
 export 'json.dart';
 export 'member.dart';
 export 'org.dart';

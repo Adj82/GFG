@@ -1,18 +1,28 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
+
 import 'app/app.dart';
 import 'data/local/local_store.dart';
 import 'data/providers.dart';
 import 'data/seed/seed.dart';
+import 'firebase_options.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('en_IN');
 
-  // Backend phase: initialise Firebase here and drop the local store.
+  // Firebase mode keeps no local copy and seeds nothing: the data is in
+  // Firestore (see BACKEND.md). The store is still opened for small settings
+  // such as the theme.
+  if (kUseFirebase) {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  }
   final store = await LocalStore.open();
-  if (!store.isSeeded) await Seed.run(store);
+  if (!kUseFirebase && !store.isSeeded) await Seed.run(store);
 
   runApp(
     ProviderScope(

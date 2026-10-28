@@ -19,7 +19,13 @@ service cloud.firestore {
       function me() {
         return get(/databases/$(database)/documents/orgs/$(orgId)/members/$(request.auth.uid)).data;
       }
-      function signedIn() { return request.auth != null; }
+      // Google sign-in, campus accounts only. The client also asks Google for
+      // this domain, but this is the check that cannot be skipped.
+      function emailOk() {
+        return request.auth.token.email_verified == true &&
+          request.auth.token.email.lower().matches('.*@kiit[.]ac[.]in');
+      }
+      function signedIn() { return request.auth != null && emailOk(); }
       function isMember() {
         return signedIn() &&
           exists(/databases/$(database)/documents/orgs/$(orgId)/members/$(request.auth.uid));
@@ -40,6 +46,18 @@ service cloud.firestore {
           (role().scope == 'domain' && domainId != null && domainId == me().domainId);
       }
       function canIn(permission, domainId) { return can(permission) && reaches(domainId); }
+      // Join requests: the domain lead for their domain, and the whole core
+      // team for every domain (they hold viewAllDomains).
+      function canReview(domainId) {
+        return can('approveMembers') && (can('viewAllDomains') || reaches(domainId));
+      }
+      // Suspending: core can suspend anyone; a lead only plain members of
+      // their own domain. Mirrors Access.canSuspend.
+      function canSuspend(target) {
+        return can('suspendAnyone') ||
+          (can('suspendMembers') && target.roleId == 'member' &&
+           target.domainId != null && target.domainId == me().domainId);
+      }
 
       // ── Organisation, roles, domains (anything not matched below is denied) ──
 
@@ -53,28 +71,57 @@ service cloud.firestore {
         allow write: if can('manageRoles');
       }
 
+      // ── Invites ──────────────────────────────────────────────────────────
+      // The President/VP adds a lead or core member by email. That person
+      // claims it by signing in with Google: the invite becomes their member
+      // record and is deleted.
+      match /invites/{email} {
+        allow read: if signedIn() &&
+          (request.auth.token.email.lower() == email || can('manageMembers'));
+        allow create: if can('manageMembers');
+        allow delete: if can('manageMembers') ||
+          (signedIn() && request.auth.token.email.lower() == email);
+      }
+
       // ── Members ──────────────────────────────────────────────────────────
       match /members/{uid} {
-        allow read: if isActive() || request.auth.uid == uid;
-        // Self sign-up creates a *pending* applicant only. Never a role.
-        allow create: if request.auth.uid == uid &&
-          request.resource.data.status == 'pending' &&
-          request.resource.data.roleId == 'member';
-        // Members edit only their own profile fields, never role/status/domain.
-        allow update: if request.auth.uid == uid &&
-          request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['name', 'phone', 'year', 'branch', 'bio', 'skills', 'github', 'linkedin', 'needsPasswordReset']);
-        // Role changes, enable/disable, accept/decline: Cloud Functions
-        // (changeRole, setDisabled, acceptApplication) that check Access.canManageMember.
+        allow read: if isActive() || (signedIn() && request.auth.uid == uid);
+        allow create: if signedIn() && request.auth.uid == uid &&
+          request.resource.data.email.lower() == request.auth.token.email.lower() && (
+            // Self sign-up creates a *pending* applicant only. Never a role.
+            (request.resource.data.status == 'pending' &&
+             request.resource.data.roleId == 'member') ||
+            // Claiming an invite: exactly the role the President/VP set.
+            (exists(/databases/$(database)/documents/orgs/$(orgId)/invites/$(request.auth.token.email.lower())) &&
+             request.resource.data.status == 'active' &&
+             request.resource.data.roleId == get(/databases/$(database)/documents/orgs/$(orgId)/invites/$(request.auth.token.email.lower())).data.roleId)
+          );
+        allow update:
+          // Members edit only their own profile fields.
+          if (request.auth.uid == uid && isActive() &&
+              request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['name', 'phone', 'year', 'branch', 'bio', 'skills', 'github', 'linkedin']))
+          // A reviewer accepts or declines a pending applicant.
+          || (canReview(resource.data.domainId) && resource.data.status == 'pending' &&
+              request.resource.data.status in ['active', 'rejected'] &&
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'domainId']))
+          // Suspend or restore. Never yourself.
+          || (request.auth.uid != uid && canSuspend(resource.data) &&
+              request.resource.data.status in ['active', 'disabled'] &&
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'disabledAt']))
+          // Role changes and term handover.
+          || (can('manageMembers') &&
+              request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['roleId', 'domainId', 'department', 'history', 'status', 'disabledAt']));
         allow delete: if false;               // history is never deleted
       }
 
       match /applications/{id} {
-        allow read: if request.auth.uid == resource.data.memberId ||
-          canIn('approveMembers', resource.data.domainId);
-        allow create: if request.auth.uid == request.resource.data.memberId &&
+        allow read: if signedIn() && (request.auth.uid == resource.data.memberId ||
+          canReview(resource.data.domainId));
+        allow create: if signedIn() && request.auth.uid == request.resource.data.memberId &&
           request.resource.data.stage == 'applied';
-        allow update: if canIn('approveMembers', resource.data.domainId) &&
+        allow update: if canReview(resource.data.domainId) &&
           !(request.resource.data.diff(resource.data).affectedKeys().hasAny(['memberId', 'domainId']));
       }
 
@@ -121,7 +168,11 @@ service cloud.firestore {
       }
       match /attendance/{id} {
         allow read: if isActive();
-        allow write: if false;                // callable `checkIn` verifies the rotating code
+        // The app checks the rotating code before writing. Harden with a
+        // callable `checkIn` once Cloud Functions are added.
+        allow create: if isActive() &&
+          (request.resource.data.memberId == request.auth.uid || can('manageEvents'));
+        allow delete: if can('manageEvents');
       }
 
       // ── Announcements, meetings, vault ───────────────────────────────────
@@ -156,10 +207,15 @@ service cloud.firestore {
           can('viewWallet') ||
           (can('viewScopedFinance') && reaches(resource.data.domainId)) ||
           can('reviewExpense') || can('verifyExpense') || can('approveExpense'));
-        // Create only as yourself, at the right entry stage (checked in the
-        // `submitExpense` callable). Direct client writes are closed so the
-        // approval chain cannot be skipped or forged.
-        allow write: if false;
+        // Submit only as yourself and only into the approval chain; only people
+        // with an approval or payout permission may move a claim along. The
+        // exact stage order is enforced in the app (ExpenseRules); move it into
+        // a callable when Cloud Functions are added.
+        allow create: if isActive() && request.resource.data.submittedBy == request.auth.uid &&
+          request.resource.data.stage in ['leadReview', 'headVerification', 'finalApproval'];
+        allow update: if isActive() && (can('reviewExpense') || can('verifyExpense') ||
+          can('approveExpense') || can('reimburse'));
+        allow delete: if false;
       }
       match /income/{id} {
         allow read: if can('viewWallet') || can('viewScopedFinance');
@@ -172,11 +228,15 @@ service cloud.firestore {
         allow read: if request.auth.uid == resource.data.recipientId;
         allow update: if request.auth.uid == resource.data.recipientId &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
-        allow create, delete: if false;       // Cloud Functions fan out notices
+        // Any signed-in campus account may notify (a new applicant tells the
+        // reviewers about their request). Nobody can delete.
+        allow create: if signedIn();
+        allow delete: if false;
       }
       match /audit/{id} {
         allow read: if can('viewAudit');
-        allow write: if false;                // append-only, written by functions
+        allow create: if isActive() && request.resource.data.actorId == request.auth.uid;
+        allow update, delete: if false;       // append-only
       }
     }
   }

@@ -1,6 +1,9 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../domain/access.dart';
+import 'firebase/firebase_auth_repository.dart';
+import 'firebase/firestore_repository.dart';
 import 'local/local_repository.dart';
 import 'local/local_store.dart';
 import 'models/models.dart';
@@ -15,6 +18,10 @@ import 'repositories/repository.dart';
 // same interfaces. See BACKEND.md.
 // ───────────────────────────────────────────────────────────────────────────
 
+/// Build with `--dart-define=USE_FIREBASE=true` to use Google sign-in and
+/// Firestore instead of the on-device demo data. See BACKEND.md.
+const kUseFirebase = bool.fromEnvironment('USE_FIREBASE');
+
 /// Overridden in main() once the store is opened.
 final localStoreProvider = Provider<LocalStore>(
   (ref) => throw UnimplementedError('Open LocalStore in main()'),
@@ -26,12 +33,15 @@ Provider<Repository<T>> _repo<T extends Entity>(
   String collection,
   T Function(Json) fromJson,
 ) => Provider<Repository<T>>(
-  (ref) =>
-      LocalRepository<T>(ref.watch(localStoreProvider), collection, fromJson),
+  (ref) => kUseFirebase
+      ? FirestoreRepository<T>(FirebaseFirestore.instance, collection, fromJson)
+      : LocalRepository<T>(ref.watch(localStoreProvider), collection, fromJson),
 );
 
 final authRepositoryProvider = Provider<AuthRepository>(
-  (ref) => LocalAuthRepository(ref.watch(localStoreProvider)),
+  (ref) => kUseFirebase
+      ? FirebaseAuthRepository()
+      : LocalAuthRepository(ref.watch(localStoreProvider)),
 );
 
 final orgRepo = _repo<Organization>(
@@ -69,6 +79,8 @@ final registrationRepo = _repo<EventRegistration>(
   Collections.registrations,
   EventRegistration.fromJson,
 );
+
+final inviteRepo = _repo<Invite>(Collections.invites, Invite.fromJson);
 
 // Live collections ──────────────────────────────────────────────────────────
 

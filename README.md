@@ -23,7 +23,7 @@ See [BACKEND.md](BACKEND.md).
 ```bash
 flutter pub get
 flutter run -d chrome        # or any device
-flutter test                 # 37 tests: rules, flows, snake, and a walk of every screen
+flutter test                 # 53 tests: rules, flows, snake, and a walk of every screen
 ```
 
 Demo accounts (password `gfg@1234`): President `2105101`,

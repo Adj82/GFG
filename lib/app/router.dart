@@ -80,7 +80,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isPublic = _public.contains(loc) || _isGuestArea(loc);
 
       if (uid == null) return isPublic ? null : '/welcome';
-      if (me == null) return isPublic ? null : '/login';
+      // Signed in with Google but no record yet: straight to the join form.
+      if (me == null) return loc == '/join' ? null : '/join';
       if (me.status != MemberStatus.active) {
         return loc == '/status' ? null : '/status';
       }

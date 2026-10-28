@@ -105,7 +105,10 @@ class MemberScreen extends ConsumerWidget {
                                   tone: Tone.neutral(context),
                                 ),
                               if (m.status == MemberStatus.disabled)
-                                Pill('Alumni', tone: Tone.amber(context)),
+                                Pill(
+                                  'Suspended / alumni',
+                                  tone: Tone.amber(context),
+                                ),
                             ],
                           ),
                         ],
@@ -323,36 +326,37 @@ class _ManageCard extends ConsumerWidget {
             ),
           if (a.can(Permission.manageMembers))
             Divider(color: p.line, height: 1),
-          ListTile(
-            leading: Icon(
-              m.status == MemberStatus.disabled
-                  ? Icons.lock_open_rounded
-                  : Icons.block_rounded,
-              color: m.status == MemberStatus.disabled ? null : p.red,
-            ),
-            title: Text(
-              m.status == MemberStatus.disabled
-                  ? 'Re-enable account'
-                  : 'Disable account',
-              style: TextStyle(
+          if (a.canSuspend(m))
+            ListTile(
+              leading: Icon(
+                m.status == MemberStatus.disabled
+                    ? Icons.lock_open_rounded
+                    : Icons.block_rounded,
                 color: m.status == MemberStatus.disabled ? null : p.red,
               ),
+              title: Text(
+                m.status == MemberStatus.disabled
+                    ? 'Restore account'
+                    : 'Suspend account',
+                style: TextStyle(
+                  color: m.status == MemberStatus.disabled ? null : p.red,
+                ),
+              ),
+              subtitle: const Text('Blocks sign-in. History is always kept.'),
+              onTap: () async {
+                final off = m.status != MemberStatus.disabled;
+                final ok = await confirmDialog(
+                  context,
+                  title: off ? 'Suspend ${m.name}?' : 'Restore ${m.name}?',
+                  message: off
+                      ? 'They are signed out and can’t sign back in until restored. Tasks, attendance and history stay.'
+                      : 'They can sign in again.',
+                  confirmLabel: off ? 'Suspend' : 'Restore',
+                  destructive: off,
+                );
+                if (ok) await acts.setDisabled(m, off);
+              },
             ),
-            subtitle: const Text('History is always kept.'),
-            onTap: () async {
-              final off = m.status != MemberStatus.disabled;
-              final ok = await confirmDialog(
-                context,
-                title: off ? 'Disable ${m.name}?' : 'Re-enable ${m.name}?',
-                message: off
-                    ? 'They can no longer sign in. Their tasks, attendance and history stay.'
-                    : 'They can sign in again.',
-                confirmLabel: off ? 'Disable' : 'Re-enable',
-                destructive: off,
-              );
-              if (ok) await acts.setDisabled(m, off);
-            },
-          ),
         ],
       ),
     );

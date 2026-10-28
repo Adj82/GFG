@@ -121,4 +121,20 @@ abstract class ActionsBase {
         .map((m) => m.id)
         .toList();
   }
+
+  /// Everyone who can decide a join request for [domainId]: the domain lead
+  /// plus the core team as backup.
+  List<String> reviewersOf(String? domainId) {
+    final roles = ref.read(roleMapProvider);
+    final domains = ref.read(domainMapProvider);
+    return ref
+        .read(activeMembersProvider)
+        .where((m) {
+          final r = roles[m.roleId];
+          if (r == null) return false;
+          return Access(me: m, role: r, domains: domains).canReview(domainId);
+        })
+        .map((m) => m.id)
+        .toList();
+  }
 }

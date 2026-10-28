@@ -66,16 +66,19 @@ class SettingsScreen extends ConsumerWidget {
                   padding: EdgeInsets.zero,
                   child: Column(
                     children: [
-                      ListTile(
-                        leading: const Icon(Icons.lock_outline_rounded),
-                        title: const Text('Change password'),
-                        trailing: const Icon(Icons.chevron_right_rounded),
-                        onTap: () => showFormSheet<void>(
-                          context,
-                          builder: (_) => const _PasswordForm(),
+                      // Real accounts use Google, so there is no password.
+                      if (kDemoMode) ...[
+                        ListTile(
+                          leading: const Icon(Icons.lock_outline_rounded),
+                          title: const Text('Change password'),
+                          trailing: const Icon(Icons.chevron_right_rounded),
+                          onTap: () => showFormSheet<void>(
+                            context,
+                            builder: (_) => const _PasswordForm(),
+                          ),
                         ),
-                      ),
-                      Divider(color: p.line, height: 1),
+                        Divider(color: p.line, height: 1),
+                      ],
                       ListTile(
                         leading: Icon(Icons.logout_rounded, color: p.red),
                         title: Text('Sign out', style: TextStyle(color: p.red)),

@@ -120,20 +120,35 @@ class LocalAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<String> createAccount({
-    required String email,
-    required String temporaryPassword,
+  String? get currentEmail {
+    final id = _userId;
+    if (id == null) return null;
+    return _store.get(Collections.credentials, id)?['email'] as String?;
+  }
+
+  /// Stands in for the Google account picker: the demo screen asks which
+  /// address to "sign in" with, and this applies the same domain rule the real
+  /// thing does.
+  @override
+  Future<GoogleIdentity> signInWithGoogle({
+    required String allowedDomain,
+    String? simulatedEmail,
   }) async {
-    if (_credentialFor(email) != null) {
-      throw const AuthFailure('An account with this email already exists.');
+    await Future<void>.delayed(const Duration(milliseconds: 350));
+    final email = (simulatedEmail ?? '').trim().toLowerCase();
+    if (email.isEmpty) throw const AuthFailure('Sign-in was cancelled.');
+    if (!email.endsWith('@$allowedDomain')) {
+      throw AuthFailure('Use your @$allowedDomain Google account.');
     }
-    final id = 'u_${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}';
-    await _store.put(Collections.credentials, {
-      'id': id,
-      'email': email.trim().toLowerCase(),
-      'hash': hash(email, temporaryPassword),
-    });
-    return id;
+    var cred = _credentialFor(email);
+    if (cred == null) {
+      final id = 'u_${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}';
+      cred = {'id': id, 'email': email, 'hash': ''};
+      await _store.put(Collections.credentials, cred);
+    }
+    await _setUser(cred['id'] as String);
+    final local = email.split('@').first;
+    return GoogleIdentity(uid: cred['id'] as String, email: email, name: local);
   }
 
   @override

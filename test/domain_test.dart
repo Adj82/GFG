@@ -265,4 +265,63 @@ void main() {
       }
     });
   });
+
+  group('suspending and reviewing', () {
+    test(
+      'core suspends anyone but themselves; leads only own-domain members',
+      () async {
+        final d = await _load();
+        Access acc(String roll) {
+          final m = d.byRoll[roll]!;
+          return Access(me: m, role: d.roles[m.roleId]!, domains: d.domains);
+        }
+
+        final core = acc('2205162'); // Event Head
+        for (final roll in ['2105101', '2205211', '2305318', '2205140']) {
+          expect(core.canSuspend(d.byRoll[roll]!), isTrue, reason: roll);
+        }
+        expect(core.canSuspend(d.byRoll['2205162']!), isFalse);
+
+        final appLead = acc('2205211');
+        final appMember = d.byRoll['2305318']!;
+        expect(appMember.domainId, appLead.me.domainId);
+        expect(appLead.canSuspend(appMember), isTrue);
+        expect(appLead.canSuspend(d.byRoll['2205233']!), isFalse); // other lead
+        expect(appLead.canSuspend(d.byRoll['2105101']!), isFalse); // president
+        expect(appLead.canSuspend(appLead.me), isFalse);
+        final webMember = d.byRoll.values.firstWhere(
+          (m) => m.roleId == 'member' && m.domainId == 'web',
+        );
+        expect(appLead.canSuspend(webMember), isFalse);
+
+        expect(acc('2305318').canSuspend(webMember), isFalse);
+      },
+    );
+
+    test(
+      'every core role reviews every domain; a lead only their own',
+      () async {
+        final d = await _load();
+        Access acc(String roll) {
+          final m = d.byRoll[roll]!;
+          return Access(me: m, role: d.roles[m.roleId]!, domains: d.domains);
+        }
+
+        for (final roll in [
+          '2105101',
+          '2105188',
+          '2205140',
+          '2205162',
+          '2205170',
+          '2205171',
+        ]) {
+          expect(acc(roll).canReview('web'), isTrue, reason: roll);
+          expect(acc(roll).canReview('app'), isTrue, reason: roll);
+        }
+        expect(acc('2205211').canReview('app'), isTrue);
+        expect(acc('2205211').canReview('web'), isFalse);
+        expect(acc('2305318').canReview('app'), isFalse);
+      },
+    );
+  });
 }

@@ -1,0 +1,311 @@
+{
+  "org": {
+    "id": "org",
+    "name": "GFG KIIT Student Chapter",
+    "shortName": "GFG KIIT",
+    "campus": "KIIT, Bhubaneswar",
+    "emailDomain": "kiit.ac.in",
+    "currentTerm": "2026–27",
+    "termStartedAt": "2026-07-01T00:00:00.000",
+    "createdAt": "2021-08-01T00:00:00.000",
+    "recruitmentOpen": true,
+    "recruitmentNote": "Induction for first and second years is open until the end of the month."
+  },
+  "domains": [
+    {
+      "id": "sysdev",
+      "name": "System Development",
+      "department": "technical",
+      "icon": "memory",
+      "blurb": "Low-level, OS and systems programming."
+    },
+    {
+      "id": "cloud",
+      "name": "Cloud",
+      "department": "technical",
+      "icon": "cloud",
+      "blurb": "Cloud platforms, DevOps and deployment."
+    },
+    {
+      "id": "app",
+      "name": "App Development",
+      "department": "technical",
+      "icon": "phone",
+      "blurb": "Flutter and native mobile apps."
+    },
+    {
+      "id": "web",
+      "name": "Web Development",
+      "department": "technical",
+      "icon": "web",
+      "blurb": "Frontend, backend and the chapter website."
+    },
+    {
+      "id": "cp",
+      "name": "Competitive Programming",
+      "department": "technical",
+      "icon": "code",
+      "blurb": "DSA, contests and the weekly ladder."
+    },
+    {
+      "id": "blockchain",
+      "name": "Blockchain",
+      "department": "technical",
+      "icon": "link",
+      "blurb": "Web3, smart contracts and protocols."
+    },
+    {
+      "id": "aiml",
+      "name": "AI/ML",
+      "department": "technical",
+      "icon": "brain",
+      "blurb": "Machine learning, data and GenAI."
+    },
+    {
+      "id": "cyber",
+      "name": "Cybersecurity",
+      "department": "technical",
+      "icon": "shield",
+      "blurb": "CTFs, security research and hygiene."
+    },
+    {
+      "id": "gamedev",
+      "name": "Game Development",
+      "department": "technical",
+      "icon": "game",
+      "blurb": "Unity, Godot and game jams."
+    },
+    {
+      "id": "admin",
+      "name": "Admin",
+      "department": "nonTechnical",
+      "icon": "admin",
+      "blurb": "Permissions, venues and paperwork."
+    },
+    {
+      "id": "marketing",
+      "name": "Marketing",
+      "department": "nonTechnical",
+      "icon": "campaign",
+      "blurb": "Outreach and campus promotion."
+    },
+    {
+      "id": "sponsorship",
+      "name": "Sponsorship",
+      "department": "nonTechnical",
+      "icon": "handshake",
+      "blurb": "Partners, sponsors and deals."
+    },
+    {
+      "id": "uiux",
+      "name": "UI/UX",
+      "department": "nonTechnical",
+      "icon": "palette",
+      "blurb": "Design for apps, posters and brand."
+    },
+    {
+      "id": "broadcasting",
+      "name": "Broadcasting",
+      "department": "nonTechnical",
+      "icon": "mic",
+      "blurb": "Photography, video and live coverage."
+    },
+    {
+      "id": "social",
+      "name": "Social Media",
+      "department": "nonTechnical",
+      "icon": "share",
+      "blurb": "Instagram, LinkedIn and X."
+    }
+  ],
+  "roles": [
+    {
+      "id": "president",
+      "name": "President",
+      "rank": 0,
+      "scope": "society",
+      "permissions": [
+        "submitExpense",
+        "reviewExpense",
+        "verifyExpense",
+        "approveExpense",
+        "viewWallet",
+        "viewScopedFinance",
+        "logIncome",
+        "reimburse",
+        "assignTasks",
+        "postAnnouncements",
+        "manageEvents",
+        "scheduleMeetings",
+        "manageVault",
+        "approveMembers",
+        "manageMembers",
+        "manageRoles",
+        "suspendAnyone",
+        "suspendMembers",
+        "viewAnalytics",
+        "viewAudit",
+        "viewAllDomains",
+        "manageTerm"
+      ],
+      "isOfficeBearer": true,
+      "tier": "leadership"
+    },
+    {
+      "id": "vice_president",
+      "name": "Vice President",
+      "rank": 1,
+      "scope": "society",
+      "permissions": [
+        "submitExpense",
+        "reviewExpense",
+        "verifyExpense",
+        "approveExpense",
+        "viewWallet",
+        "viewScopedFinance",
+        "logIncome",
+        "reimburse",
+        "assignTasks",
+        "postAnnouncements",
+        "manageEvents",
+        "scheduleMeetings",
+        "manageVault",
+        "approveMembers",
+        "manageMembers",
+        "suspendAnyone",
+        "suspendMembers",
+        "viewAnalytics",
+        "viewAudit",
+        "viewAllDomains"
+      ],
+      "isOfficeBearer": true,
+      "tier": "leadership"
+    },
+    {
+      "id": "technical_head",
+      "name": "Technical Head",
+      "rank": 3,
+      "scope": "department",
+      "permissions": [
+        "submitExpense",
+        "reviewExpense",
+        "verifyExpense",
+        "viewScopedFinance",
+        "assignTasks",
+        "postAnnouncements",
+        "manageEvents",
+        "scheduleMeetings",
+        "approveMembers",
+        "manageVault",
+        "viewAnalytics",
+        "viewWallet",
+        "viewAllDomains",
+        "suspendAnyone"
+      ],
+      "isOfficeBearer": true,
+      "tier": "core"
+    },
+    {
+      "id": "event_head",
+      "name": "Event Head",
+      "rank": 3,
+      "scope": "department",
+      "permissions": [
+        "submitExpense",
+        "reviewExpense",
+        "verifyExpense",
+        "viewScopedFinance",
+        "assignTasks",
+        "postAnnouncements",
+        "manageEvents",
+        "scheduleMeetings",
+        "approveMembers",
+        "manageVault",
+        "viewAnalytics",
+        "viewWallet",
+        "viewAllDomains",
+        "suspendAnyone"
+      ],
+      "isOfficeBearer": true,
+      "tier": "core"
+    },
+    {
+      "id": "sponsorship_head",
+      "name": "Sponsorship Head",
+      "rank": 3,
+      "scope": "department",
+      "permissions": [
+        "submitExpense",
+        "reviewExpense",
+        "verifyExpense",
+        "viewScopedFinance",
+        "assignTasks",
+        "postAnnouncements",
+        "manageEvents",
+        "scheduleMeetings",
+        "approveMembers",
+        "manageVault",
+        "viewAnalytics",
+        "viewWallet",
+        "viewAllDomains",
+        "suspendAnyone"
+      ],
+      "isOfficeBearer": true,
+      "tier": "core"
+    },
+    {
+      "id": "marketing_head",
+      "name": "Marketing Head",
+      "rank": 3,
+      "scope": "department",
+      "permissions": [
+        "submitExpense",
+        "reviewExpense",
+        "verifyExpense",
+        "viewScopedFinance",
+        "assignTasks",
+        "postAnnouncements",
+        "manageEvents",
+        "scheduleMeetings",
+        "approveMembers",
+        "manageVault",
+        "viewAnalytics",
+        "viewWallet",
+        "viewAllDomains",
+        "suspendAnyone"
+      ],
+      "isOfficeBearer": true,
+      "tier": "core"
+    },
+    {
+      "id": "domain_lead",
+      "name": "Domain Lead",
+      "rank": 4,
+      "scope": "domain",
+      "permissions": [
+        "submitExpense",
+        "reviewExpense",
+        "viewScopedFinance",
+        "assignTasks",
+        "postAnnouncements",
+        "manageEvents",
+        "scheduleMeetings",
+        "approveMembers",
+        "suspendMembers"
+      ],
+      "isOfficeBearer": true,
+      "tier": "lead"
+    },
+    {
+      "id": "member",
+      "name": "Member",
+      "rank": 5,
+      "scope": "self",
+      "permissions": [
+        "submitExpense"
+      ],
+      "isOfficeBearer": false,
+      "tier": "member"
+    }
+  ]
+}

@@ -82,8 +82,25 @@ class Access {
       (can(Permission.manageEvents) &&
           (e.domainId == null ? isSocietyWide : reaches(domainId: e.domainId)));
 
+  /// Role changes and direct edits: only people with manageMembers.
   bool canManageMember(Member m) =>
-      m.id != me.id &&
-      (can(Permission.manageMembers) ||
-          (can(Permission.approveMembers) && reaches(domainId: m.domainId)));
+      m.id != me.id && (can(Permission.manageMembers) || canSuspend(m));
+
+  /// Can this person see and decide join requests for [domainId]? A domain
+  /// lead covers their own domain; the core team covers every domain, so a
+  /// request never waits on one person.
+  bool canReview(String? domainId) =>
+      can(Permission.approveMembers) &&
+      (can(Permission.viewAllDomains) || reaches(domainId: domainId));
+
+  /// Suspend (or restore) [m]. The core team can suspend anyone but
+  /// themselves; a domain lead only plain members of their own domain.
+  bool canSuspend(Member m) {
+    if (m.id == me.id) return false;
+    if (can(Permission.suspendAnyone)) return true;
+    return can(Permission.suspendMembers) &&
+        m.roleId == 'member' &&
+        m.domainId != null &&
+        m.domainId == me.domainId;
+  }
 }

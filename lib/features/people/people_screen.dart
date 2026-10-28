@@ -214,13 +214,8 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Share this temporary password. They will be asked to change it on first sign-in.',
-              ),
-              const SizedBox(height: Gap.md),
-              SelectableText(
-                result,
-                style: Theme.of(c).textTheme.headlineSmall,
+              Text(
+                'Ask them to open the app and tap “Continue with Google” with $result. They get their role the moment they sign in.',
               ),
             ],
           ),
@@ -270,9 +265,9 @@ class _AddMemberFormState extends ConsumerState<_AddMemberForm> {
     setState(() => _busy = true);
     try {
       final dom = ref.read(domainMapProvider)[_domainId];
-      final temp = await ref
+      await ref
           .read(peopleActionsProvider)
-          .addMember(
+          .inviteMember(
             name: _name.text,
             email: _email.text,
             roleId: _roleId,
@@ -283,7 +278,7 @@ class _AddMemberFormState extends ConsumerState<_AddMemberForm> {
                       : Department.nonTechnical)
                 : dom?.department,
           );
-      if (mounted) Navigator.pop(context, temp);
+      if (mounted) Navigator.pop(context, _email.text.trim().toLowerCase());
     } catch (e) {
       if (mounted) {
         setState(() => _busy = false);
@@ -305,8 +300,8 @@ class _AddMemberFormState extends ConsumerState<_AddMemberForm> {
     return FormSheet(
       formKey: _form,
       title: 'Add a member',
-      subtitle: 'Creates their account with a temporary password.',
-      submitLabel: 'Create account',
+      subtitle: 'They sign in with Google using this email and get this role.',
+      submitLabel: 'Add',
       busy: _busy,
       onSubmit: _submit,
       children: [

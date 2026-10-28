@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gfghub/data/local/local_store.dart';
 import 'package:gfghub/data/models/models.dart';
 import 'package:gfghub/data/providers.dart';
+import 'package:gfghub/data/repositories/repository.dart';
 import 'package:gfghub/data/seed/seed.dart';
 import 'package:gfghub/domain/actions/finance_actions.dart';
 import 'package:gfghub/domain/actions/people_actions.dart';
@@ -156,5 +157,149 @@ void main() {
     expect(after[outgoing.id]!.history, isNotEmpty);
     expect(after[newPres.id]!.roleId, 'president');
     expect(c.read(organizationProvider)!.currentTerm, '2027–28');
+  });
+
+  test('a join request notifies the lead and the whole core team', () async {
+    final c = await _boot();
+    await c
+        .read(authActionsProvider)
+        .applyToJoin(
+          name: 'New Person',
+          email: '2599999@kiit.ac.in',
+          password: 'whatever1',
+          domainId: 'web',
+          year: 2,
+          branch: 'CSE',
+          why: 'Keen',
+        );
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    final members = {for (final m in c.read(membersProvider)) m.rollNo: m.id};
+    final told = c
+        .read(noticesProvider)
+        .where(
+          (n) => n.title == 'New join request' && n.body.contains('New Person'),
+        )
+        .map((n) => n.recipientId)
+        .toSet();
+    for (final roll in [
+      '2205233',
+      '2105101',
+      '2105188',
+      '2205140',
+      '2205162',
+      '2205170',
+      '2205171',
+    ]) {
+      expect(told, contains(members[roll]), reason: roll);
+    }
+    expect(told, isNot(contains(members['2205211']))); // app lead
+  });
+
+  test(
+    'suspending blocks sign-in; a lead cannot suspend outside their domain',
+    () async {
+      final c = await _boot();
+      await _as(c, '2205211'); // app lead
+      final all = {for (final m in c.read(membersProvider)) m.rollNo: m};
+      final acts = c.read(peopleActionsProvider);
+      expect(() => acts.setDisabled(all['2205233']!, true), throwsStateError);
+      await acts.setDisabled(all['2305318']!, true);
+      await Future<void>.delayed(const Duration(milliseconds: 40));
+      final after = c
+          .read(membersProvider)
+          .firstWhere((m) => m.rollNo == '2305318');
+      expect(after.status, MemberStatus.disabled);
+      expect(
+        c.read(auditProvider).any((a) => a.action == 'member.suspended'),
+        isTrue,
+      );
+
+      await _as(c, '2205162'); // core restores
+      await c.read(peopleActionsProvider).setDisabled(after, false);
+      await Future<void>.delayed(const Duration(milliseconds: 40));
+      expect(
+        c.read(membersProvider).firstWhere((m) => m.rollNo == '2305318').status,
+        MemberStatus.active,
+      );
+    },
+  );
+
+  group('google sign-in', () {
+    test('only kiit.ac.in accounts get in', () async {
+      final c = await _boot();
+      final auth = c.read(authActionsProvider);
+      await expectLater(
+        auth.signInWithGoogle(simulatedEmail: 'someone@gmail.com'),
+        throwsA(isA<AuthFailure>()),
+      );
+      expect(c.read(authUserIdProvider), isNull);
+      await expectLater(
+        auth.signInWithGoogle(simulatedEmail: 'x@evilkiit.ac.in'),
+        throwsA(isA<AuthFailure>()),
+      );
+      expect(c.read(authUserIdProvider), isNull);
+    });
+
+    test('a returning member lands as themselves', () async {
+      final c = await _boot();
+      await c
+          .read(authActionsProvider)
+          .signInWithGoogle(simulatedEmail: '2105101@KIIT.ac.in');
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+      expect(c.read(currentMemberProvider)?.rollNo, '2105101');
+    });
+
+    test('an invited lead is claimed by email on first sign-in', () async {
+      final c = await _boot();
+      await _as(c, '2105101'); // president invites
+      await c
+          .read(peopleActionsProvider)
+          .inviteMember(
+            name: 'Nia Lead',
+            email: 'Nia.Lead@kiit.ac.in',
+            roleId: 'domain_lead',
+            domainId: 'cloud',
+            dept: Department.technical,
+          );
+      await c.read(authActionsProvider).signOut();
+      await c
+          .read(authActionsProvider)
+          .signInWithGoogle(simulatedEmail: 'nia.lead@kiit.ac.in');
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      final me = c.read(currentMemberProvider)!;
+      expect(me.name, 'Nia Lead');
+      expect(me.roleId, 'domain_lead');
+      expect(me.domainId, 'cloud');
+      expect(me.status, MemberStatus.active);
+      expect(await c.read(inviteRepo).fetch('nia.lead@kiit.ac.in'), isNull);
+    });
+
+    test(
+      'a newcomer signs in, then requests a domain without a password',
+      () async {
+        final c = await _boot();
+        await c
+            .read(authActionsProvider)
+            .signInWithGoogle(simulatedEmail: '2599999@kiit.ac.in');
+        await Future<void>.delayed(const Duration(milliseconds: 30));
+        expect(c.read(authUserIdProvider), isNotNull);
+        expect(c.read(currentMemberProvider), isNull); // router sends to /join
+        await c
+            .read(authActionsProvider)
+            .applyToJoin(
+              name: 'Newcomer',
+              email: 'ignored@kiit.ac.in',
+              domainId: 'web',
+              year: 1,
+              branch: 'CSE',
+              why: 'Keen',
+            );
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        final me = c.read(currentMemberProvider)!;
+        expect(me.status, MemberStatus.pending);
+        expect(me.email, '2599999@kiit.ac.in'); // Google's email wins
+        expect(me.domainId, 'web');
+      },
+    );
   });
 }

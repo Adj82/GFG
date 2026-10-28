@@ -49,6 +49,7 @@ abstract final class DefaultRoles {
         Permission.manageEvents,
         Permission.scheduleMeetings,
         Permission.approveMembers,
+        Permission.suspendMembers,
       },
     ),
     const Role(
@@ -76,6 +77,7 @@ abstract final class DefaultRoles {
     // The six-person core team sees the treasury and every domain.
     Permission.viewWallet,
     Permission.viewAllDomains,
+    Permission.suspendAnyone,
   };
 
   /// The six core roles: President, VP and the four heads below.

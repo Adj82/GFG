@@ -172,9 +172,7 @@ class _DomainRow extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     row.lastText,
-                    style: context.text.bodyMedium?.copyWith(
-                      color: p.inkMuted,
-                    ),
+                    style: context.text.bodyMedium?.copyWith(color: p.inkMuted),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -228,11 +226,12 @@ class DomainDetailScreen extends ConsumerWidget {
         .watch(eventsProvider)
         .where((e) => e.domainId == domainId && !e.isPast() && !e.cancelled)
         .toList();
-    final notes = ref
-        .watch(announcementsProvider)
-        .where((n) => n.domainId == domainId)
-        .toList()
-      ..sort((x, y) => y.createdAt.compareTo(x.createdAt));
+    final notes =
+        ref
+            .watch(announcementsProvider)
+            .where((n) => n.domainId == domainId)
+            .toList()
+          ..sort((x, y) => y.createdAt.compareTo(x.createdAt));
 
     Widget heading(String t) =>
         SectionHeader(t, padding: const EdgeInsets.only(bottom: Gap.sm));

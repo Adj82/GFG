@@ -35,7 +35,7 @@ class RequestsScreen extends ConsumerWidget {
     final decided =
         ref
             .watch(applicationsProvider)
-            .where((x) => !x.stage.isOpen && a.reaches(domainId: x.domainId))
+            .where((x) => !x.stage.isOpen && a.canReview(x.domainId))
             .toList()
           ..sort(
             (x, y) => (y.decidedAt ?? y.createdAt).compareTo(
@@ -199,10 +199,7 @@ class RequestDetailScreen extends ConsumerWidget {
     final domains = ref.watch(domainMapProvider);
     final m = members[x.memberId];
     final acts = ref.read(peopleActionsProvider);
-    final can =
-        x.stage.isOpen &&
-        a.can(Permission.approveMembers) &&
-        a.reaches(domainId: x.domainId);
+    final can = x.stage.isOpen && a.canReview(x.domainId);
     final next = switch (x.stage) {
       ApplicationStage.applied => ApplicationStage.shortlisted,
       ApplicationStage.shortlisted => ApplicationStage.interview,

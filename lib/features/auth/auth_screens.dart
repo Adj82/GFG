@@ -171,6 +171,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     await _signIn(_email.text, _password.text);
   }
 
+  Future<void> _google() async {
+    String? simulated;
+    if (kDemoMode) {
+      // No real Google here: ask which account to pretend to use.
+      simulated = await askDemoGoogleEmail(context);
+      if (simulated == null) return;
+    }
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await ref
+          .read(authActionsProvider)
+          .signInWithGoogle(simulatedEmail: simulated);
+    } catch (e) {
+      if (mounted) setState(() => _error = e.toString());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _signIn(String email, String password) async {
     setState(() {
       _busy = true;
@@ -199,74 +221,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               Text('Sign in', style: context.text.headlineLarge),
               const SizedBox(height: 4),
               Text(
-                'Use your @${org?.emailDomain ?? 'kiit.ac.in'} email.',
+                'Use your @${org?.emailDomain ?? 'kiit.ac.in'} Google account.',
                 style: context.text.bodyMedium?.copyWith(color: p.inkMuted),
               ),
               const SizedBox(height: Gap.xl),
-              TextFormField(
-                controller: _email,
-                keyboardType: TextInputType.emailAddress,
-                autofillHints: const [
-                  AutofillHints.username,
-                  AutofillHints.email,
-                ],
-                textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(
-                  labelText: 'Email',
-                  prefixIcon: Icon(Icons.alternate_email_rounded),
-                ),
-                validator: (v) =>
-                    ref.read(authActionsProvider).validateCampusEmail(v ?? ''),
+              FilledButton.icon(
+                onPressed: _busy ? null : _google,
+                icon: const Icon(Icons.login_rounded),
+                label: const Text('Continue with Google'),
               ),
-              const SizedBox(height: Gap.lg),
-              TextFormField(
-                controller: _password,
-                obscureText: _obscure,
-                autofillHints: const [AutofillHints.password],
-                textInputAction: TextInputAction.done,
-                onFieldSubmitted: (_) => _submit(),
-                decoration: InputDecoration(
-                  labelText: 'Password',
-                  prefixIcon: const Icon(Icons.lock_outline_rounded),
-                  suffixIcon: IconButton(
-                    tooltip: _obscure ? 'Show password' : 'Hide password',
-                    icon: Icon(
-                      _obscure
-                          ? Icons.visibility_outlined
-                          : Icons.visibility_off_outlined,
-                    ),
-                    onPressed: () => setState(() => _obscure = !_obscure),
-                  ),
-                ),
-                validator: (v) =>
-                    (v == null || v.isEmpty) ? 'Enter your password.' : null,
-              ),
-              if (_error != null) ...[
+              if (_error != null && !kDemoMode) ...[
                 const SizedBox(height: Gap.md),
                 _ErrorBanner(_error!),
               ],
               const SizedBox(height: Gap.lg),
-              FilledButton(
-                onPressed: _busy ? null : _submit,
-                child: _busy
-                    ? SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.4,
-                          color: p.inkMuted,
-                        ),
-                      )
-                    : const Text('Sign in'),
-              ),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: () => context.push('/forgot'),
-                  child: const Text('Forgot password?'),
-                ),
-              ),
-              const SizedBox(height: Gap.sm),
               Panel(
                 color: p.greenTint,
                 borderColor: Colors.transparent,
@@ -275,34 +243,84 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     Icon(Icons.group_add_rounded, color: p.greenStrong),
                     const SizedBox(width: Gap.md),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'New to the chapter?',
-                            style: context.text.titleSmall,
-                          ),
-                          Text(
-                            org?.recruitmentOpen == false
-                                ? 'Joining is closed right now.'
-                                : 'Request to join a domain.',
-                            style: context.text.bodySmall,
-                          ),
-                        ],
+                      child: Text(
+                        org?.recruitmentOpen == false
+                            ? 'New here? Joining is closed right now.'
+                            : 'New here? Continue with Google, then pick a domain to request.',
+                        style: context.text.bodySmall,
                       ),
-                    ),
-                    FilledButton(
-                      onPressed: () => context.push('/join'),
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size(0, 40),
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                      ),
-                      child: const Text('Join'),
                     ),
                   ],
                 ),
               ),
               if (kDemoMode) ...[
+                const SizedBox(height: Gap.xl),
+                Text('Demo sign-in', style: context.text.titleSmall),
+                const SizedBox(height: Gap.md),
+                TextFormField(
+                  controller: _email,
+                  keyboardType: TextInputType.emailAddress,
+                  autofillHints: const [
+                    AutofillHints.username,
+                    AutofillHints.email,
+                  ],
+                  textInputAction: TextInputAction.next,
+                  decoration: const InputDecoration(
+                    labelText: 'Email',
+                    prefixIcon: Icon(Icons.alternate_email_rounded),
+                  ),
+                  validator: (v) => ref
+                      .read(authActionsProvider)
+                      .validateCampusEmail(v ?? ''),
+                ),
+                const SizedBox(height: Gap.lg),
+                TextFormField(
+                  controller: _password,
+                  obscureText: _obscure,
+                  autofillHints: const [AutofillHints.password],
+                  textInputAction: TextInputAction.done,
+                  onFieldSubmitted: (_) => _submit(),
+                  decoration: InputDecoration(
+                    labelText: 'Password',
+                    prefixIcon: const Icon(Icons.lock_outline_rounded),
+                    suffixIcon: IconButton(
+                      tooltip: _obscure ? 'Show password' : 'Hide password',
+                      icon: Icon(
+                        _obscure
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                      ),
+                      onPressed: () => setState(() => _obscure = !_obscure),
+                    ),
+                  ),
+                  validator: (v) =>
+                      (v == null || v.isEmpty) ? 'Enter your password.' : null,
+                ),
+                if (_error != null) ...[
+                  const SizedBox(height: Gap.md),
+                  _ErrorBanner(_error!),
+                ],
+                const SizedBox(height: Gap.lg),
+                FilledButton(
+                  onPressed: _busy ? null : _submit,
+                  child: _busy
+                      ? SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.4,
+                            color: p.inkMuted,
+                          ),
+                        )
+                      : const Text('Sign in'),
+                ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => context.push('/forgot'),
+                    child: const Text('Forgot password?'),
+                  ),
+                ),
                 const SizedBox(height: Gap.xl),
                 Text('Demo accounts', style: context.text.titleSmall),
                 const SizedBox(height: 2),
@@ -513,8 +531,8 @@ class AccountStatusScreen extends ConsumerWidget {
       ),
       MemberStatus.disabled => (
         Icons.lock_outline_rounded,
-        'This account is no longer active',
-        'Your term as an office bearer has ended, so access is closed. Your history is kept safe. Contact the President if this looks wrong.',
+        'This account is suspended',
+        'Access is closed, either because your term ended or the core team suspended it. Your history is kept safe. Contact the core team if this looks wrong.',
       ),
       _ => (
         Icons.help_outline_rounded,
@@ -720,4 +738,42 @@ class NotFoundScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Demo only: stands in for Google's account picker.
+Future<String?> askDemoGoogleEmail(BuildContext context) {
+  final controller = TextEditingController();
+  return showDialog<String>(
+    context: context,
+    builder: (c) => AlertDialog(
+      title: const Text('Pretend Google account'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Demo mode has no real Google. Type the account to sign in with, for example 2105101@kiit.ac.in. Anything outside kiit.ac.in is refused, as it will be for real.',
+          ),
+          const SizedBox(height: Gap.md),
+          TextField(
+            controller: controller,
+            autofocus: true,
+            keyboardType: TextInputType.emailAddress,
+            decoration: const InputDecoration(labelText: 'Google email'),
+            onSubmitted: (v) => Navigator.pop(c, v),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(c),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(c, controller.text),
+          child: const Text('Continue'),
+        ),
+      ],
+    ),
+  );
 }
