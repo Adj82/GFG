@@ -7,7 +7,17 @@ library;
 
 typedef Json = Map<String, dynamic>;
 
-DateTime readDate(Object? v) => v is DateTime ? v : DateTime.parse(v as String);
+DateTime readDate(Object? v) {
+  if (v is DateTime) return v;
+  if (v == null) return DateTime.now();
+  if (v is Object && (v.runtimeType.toString().contains('Timestamp') || v is dynamic)) {
+    try {
+      final dt = (v as dynamic).toDate();
+      if (dt is DateTime) return dt;
+    } catch (_) {}
+  }
+  return DateTime.parse(v.toString());
+}
 
 DateTime? readDateOrNull(Object? v) => v == null ? null : readDate(v);
 

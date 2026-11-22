@@ -1,0 +1,13 @@
+{
+  "name": "societyos-firebase-bootstrap",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "One-time Firestore bootstrapper for SocietyOS (GFG KIIT)",
+  "main": "bootstrap.mjs",
+  "scripts": {
+    "bootstrap": "node bootstrap.mjs"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.0.0"
+  }
+}

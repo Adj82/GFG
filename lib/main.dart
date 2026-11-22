@@ -17,9 +17,13 @@ Future<void> main() async {
   // Firestore (see BACKEND.md). The store is still opened for small settings
   // such as the theme.
   if (kUseFirebase) {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
+    try {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    } catch (e) {
+      debugPrint('Firebase initialization warning: $e');
+    }
   }
   final store = await LocalStore.open();
   if (!kUseFirebase && !store.isSeeded) await Seed.run(store);
